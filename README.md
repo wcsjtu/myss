@@ -51,7 +51,7 @@ python manage.py server --help
 ## TODO
 
 - daemon mode
-- implementation of gfw list
+- improve performance of handling gfw list
 - flow control
 - ipv6 support
 - more
