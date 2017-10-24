@@ -10,6 +10,7 @@ import sys
 import weakref
 from ss.ioloop import IOLoop
 from ss import utils
+from ss.lru_cache import lru_cache
 from . import socks5
 
 # These errnos indicate that a non-blocking operation must be retried
@@ -200,6 +201,7 @@ class BaseMixin(object):
         self._dns_resolver = dns_resolver
         self._direct_conn = False
 
+    @lru_cache(maxsize=1000)
     def _exclusive_host(self, host):
         """
         for local server, it filter the host which in gfw list. 
@@ -211,6 +213,11 @@ class BaseMixin(object):
             boolean. return `True` if `host` in blacklist or in gfwlist
         WARNING: need to override
         """
+        hostlist = self._config["gfwlist"] if self.ISLOCAL\
+            else self._config["forbidden_ip"]
+        for regex in hostlist:
+            if regex.search(host):
+                return True    
         return False
 
     def on_recv_nego(self):

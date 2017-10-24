@@ -4,6 +4,7 @@ import logging
 import sys
 import os
 import signal
+import json
 from ss import utils
 
 def to_bytes(s):
@@ -172,7 +173,6 @@ class Command(object):
         f = self._to_abspath(f)
         if not os.path.exists(f):
             raise argparse.ArgumentTypeError("config file `%s` doen't exist!" % f)
-        import json
         try:
             with open(f, "r") as f:
                 cfg = json.load(f)
@@ -185,7 +185,17 @@ class Command(object):
             raise argparse.ArgumentTypeError("config file must be json format")
 
     def _check_iplist(self, f):
-        pass
+        import re
+        f = self._to_abspath(f)
+        if not os.path.exists(f):
+            raise argparse.ArgumentTypeError("iplist file `%s` doen't exist!" % f)
+        try:
+            with open(f, "r") as f:
+                iplist = json.load(f)
+            r = [re.compile(item) for item in iplist]   # any other has better way to match hostname?
+            return r
+        except ValueError:
+            raise argparse.ArgumentTypeError("iplist file must be json format")
 
     def _cfg_param(self, args):
         cfg = None
