@@ -43,9 +43,9 @@ class KqueueLoop(object):
 
     def _control(self, fd, mode, flags):
         events = []
-        if mode & POLL_IN:
+        if mode & IOLoop.READ:
             events.append(select.kevent(fd, select.KQ_FILTER_READ, flags))
-        if mode & POLL_OUT:
+        if mode & IOLoop.WRITE:
             events.append(select.kevent(fd, select.KQ_FILTER_WRITE, flags))
         for e in events:
             self._kqueue.control([e], 0)
@@ -54,13 +54,25 @@ class KqueueLoop(object):
         if timeout < 0:
             timeout = None  # kqueue behaviour
         events = self._kqueue.control(None, KqueueLoop.MAX_EVENTS, timeout)
-        results = defaultdict(lambda: POLL_NULL)
+        results = defaultdict(lambda: 0x00)
         for e in events:
             fd = e.ident
             if e.filter == select.KQ_FILTER_READ:
-                results[fd] |= POLL_IN
-            elif e.filter == select.KQ_FILTER_WRITE:
-                results[fd] |= POLL_OUT
+                results[fd] |= IOLoop.READ
+            if e.filter == select.KQ_FILTER_WRITE:
+                if e.flags & select.KQ_EV_EOF:
+                    # If an asynchronous connection is refused, kqueue
+                    # returns a write event with the EOF flag set.
+                    # Turn this into an error for consistency with the
+                    # other IOLoop implementations.
+                    # Note that for read events, EOF may be returned before
+                    # all data has been consumed from the socket buffer,
+                    # so we only check for EOF on write events.
+                    results[fd] = IOLoop.ERROR
+                else:
+                    results[fd] |= IOLoop.WRITE
+            if e.flags & select.KQ_EV_ERROR:
+                results[fd] |= IOLoop.ERROR
         return results.items()
 
     def register(self, fd, mode):
