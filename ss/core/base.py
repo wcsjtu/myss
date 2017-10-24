@@ -201,7 +201,6 @@ class BaseMixin(object):
         self._dns_resolver = dns_resolver
         self._direct_conn = False
 
-    @lru_cache(maxsize=1000)
     def _exclusive_host(self, host):
         """
         for local server, it filter the host which in gfw list. 
@@ -213,12 +212,7 @@ class BaseMixin(object):
             boolean. return `True` if `host` in blacklist or in gfwlist
         WARNING: need to override
         """
-        hostlist = self._config["gfwlist"] if self.ISLOCAL\
-            else self._config["forbidden_ip"]
-        for regex in hostlist:
-            if regex.search(host):
-                return True    
-        return False
+        
 
     def on_recv_nego(self):
         pass
@@ -235,9 +229,14 @@ class LocalMixin(BaseMixin):
         super(LocalMixin, self).__init__(dns_resolver)
         self._status = self.STAGE_INIT
 
+    @lru_cache(maxsize=1000)
     def _exclusive_host(self, host):
-        
-        return True
+        hostlist = self._config["gfwlist"] if self.ISLOCAL\
+            else self._config["forbidden_ip"]
+        for regex in hostlist:
+            if regex.search(host):
+                return True    
+        return False
 
     def _sshost(self):
         return (self._config["server"], 
@@ -315,7 +314,7 @@ class LocalMixin(BaseMixin):
         ack, l = socks5.gen_ack()
         self._write_buf.append(ack)    # send back ack
         self._wbuf_size += l
-        if self._exclusive_host(remote_addr[0]):    # host in gfwlist
+        if self._exclusive_host(remote_addr):    # host in gfwlist
             self._append_to_rbuf(data, codec=True)
             self._peer_addr = self._sshost()        # connect ssserver
         else:

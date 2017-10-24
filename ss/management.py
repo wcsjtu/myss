@@ -18,6 +18,30 @@ class Command(object):
     DESC = "A fast tunnel proxy that helps you bypass firewalls."
     USAGE="myss <subcommand> [options] [args]"
 
+    DEST_K = {
+              "subcmd": "subcmd", 
+              "action": "-d", 
+              "pid_file": "--pid-file",
+              "log_file": "--log-file", 
+              "config": "-c", 
+              "password": "-p",
+              "method": "-m", 
+              "timeout": "-t", 
+              "fast_open": "--fast-open",
+              "server": "-s", 
+              "workers": "--workers", 
+              "server_port": "-P",
+              "forbidden_ip": "--forbidden-ip", 
+              "manager_address": "--manager-address",
+              "local_address": "-s", 
+              "local_port": "-P", 
+              "rhost": "-H", 
+              "user": "--user",
+              "gfwlist": "--gfw-list", 
+              "quiet": "--quiet", 
+              "verbose": "-v"
+            }
+
     def __init__(self, parser=None):
         
         self.parser = parser if parser else \
@@ -31,86 +55,91 @@ class Command(object):
         self.add_server_argument()
         self.add_local_argument()
 
+    def add_arg(self, parser, **options):
+        k = self.DEST_K[options["dest"]]
+        parser.add_argument(k, **options)
+
     def add_general_argument(self, parser):
         parser = parser.add_argument_group("General options")
-        parser.add_argument("-v", help="verbose mode")
-        parser.add_argument("-d", help="command for daemon mode", dest="action",
-                            choices=["start", "stop", "restart"])
-        parser.add_argument("--pid-file", help="pid file for daemon mode", 
-                            type=self._check_path, dest="pid_file")
-        parser.add_argument("--log-file", help="log file for daemon mode", 
-                            type=self._check_path, dest="log_file")
-        parser.add_argument("--user", help="username to run as")
-        parser.add_argument("--quiet", help="quiet mode, only show warnings and errors",
-                             action='store_true')
-        parser.add_argument("--version", help="show version information",
-                             action='version', version='myss 0.0')
+        self.add_arg(parser, dest="verbose", help="verbose mode")
+
+        self.add_arg(parser, help="command for daemon mode", dest="action",
+                     choices=["start", "stop", "restart"])
+
+        self.add_arg(parser, help="pid file for daemon mode", 
+                     type=self._check_path, dest="pid_file")
+
+        self.add_arg(parser, help="log file for daemon mode", 
+                     type=self._check_path, dest="log_file")
+
+        self.add_arg(parser, dest="user", help="username to run as")
+        self.add_arg(parser, dest="quiet", help="quiet mode, only show warnings and errors",
+                     action='store_true')
 
     def add_common_argument(self, parser):
-        parser.add_argument("-c", metavar="CONFIG", type=self._check_config,
-                            help="path to config file, if this parameter is specified," 
-                            "all other parameters will be ignored!", 
-                            dest="config")
+        self.add_arg(parser, metavar="CONFIG", type=self._check_config,
+                     help="path to config file, if this parameter is specified," 
+                    "all other parameters will be ignored!", 
+                    dest="config")
         
-        parser.add_argument("-p", metavar="PASSWORD", required=True,
-                            help="password", dest="password")
+        self.add_arg(parser, metavar="PASSWORD", required=True,
+                     help="password", dest="password")
 
-        parser.add_argument("-m", metavar="METHOD", default=to_bytes("aes-256-cfb"),
-                            help="encryption method, default: aes-256-cfb", 
-                            type=self._check_method, dest="method")
+        self.add_arg(parser, metavar="METHOD", default=to_bytes("aes-256-cfb"),
+                     help="encryption method, default: aes-256-cfb", 
+                     type=self._check_method, dest="method")
 
-        parser.add_argument("-t", metavar="TIMEOUT", default=300, 
-                            type=self._check_timeout, dest="timeout",
-                            help="timeout in seconds for idle connection, "
-                            "default: 300")
+        self.add_arg(parser, metavar="TIMEOUT", default=300, 
+                     type=self._check_timeout, dest="timeout",
+                     help="timeout in seconds for idle connection, default: 300")
 
-        parser.add_argument("--fast-open", action='store_true', dest="fast_open",
-                            help="use TCP_FASTOPEN, requires Linux 3.7+")
+        self.add_arg(parser, action='store_true', dest="fast_open",
+                     help="use TCP_FASTOPEN, requires Linux 3.7+")
         
     def add_server_argument(self):
         
         parser = self.server_parser
-        parser.add_argument("--workers", type=self._check_workers, metavar="WORKERS",
-                            help="number of workers, available on Unix/Linux,"
-                            " count of cpu cores is recommended.",
-                            default=self._default_workers())
+        self.add_arg(parser, dest="workers", type=self._check_workers, metavar="WORKERS",
+                     help="number of workers, available on Unix/Linux,"
+                     " count of cpu cores is recommended.",
+                     default=self._default_workers())
 
-        parser.add_argument("-s", metavar="ADDR", dest="server", type=self._check_addr,
-                            default=to_bytes("0.0.0.0"), required=True, 
-                            help=" hostname or ipaddr, default is 0.0.0.0")
+        self.add_arg(parser, metavar="ADDR", dest="server", type=self._check_addr,
+                     default=to_bytes("0.0.0.0"), required=True, 
+                     help=" hostname or ipaddr, default is 0.0.0.0")
 
-        parser.add_argument("-P", metavar="PORT", type=int, 
-                            default=8388, required=True,
-                            help="port, default: 8388", dest="server_port")
+        self.add_arg(parser, metavar="PORT", type=int, 
+                     default=8388, required=True,
+                     help="port, default: 8388", dest="server_port")
         self.add_common_argument(parser)
-        parser.add_argument("--forbidden-ip", type=self._check_iplist, 
-                            metavar="IPLIST", dest="forbidden_ip",
-                            help="comma seperated IP list forbidden to connect")
+        self.add_arg(parser, type=self._check_iplist, 
+                     metavar="IPLIST", dest="forbidden_ip",
+                     help="comma seperated IP list forbidden to connect")
 
-        parser.add_argument("--manager-address", dest="manager_address",
-                            help="optional server manager UDP address, see wiki")
+        self.add_arg(parser, dest="manager_address",
+                     help="optional server manager UDP address, see wiki")
         self.add_general_argument(self.server_parser)
 
     def add_local_argument(self):
         parser = self.local_parser
-        parser.add_argument("-s", metavar="ADDR", dest="local_address", 
-                            default="127.0.0.1", required=True,
-                            help="interface for local server to listen on, "
-                            "default is 127.0.0.1" , type=self._check_addr)
+        self.add_arg(parser, metavar="ADDR", dest="local_address", 
+                     default="127.0.0.1", required=True,
+                     help="interface for local server to listen on, "
+                     "default is 127.0.0.1" , type=self._check_addr)
 
-        parser.add_argument("-P", metavar="PORT", type=int, default=1080,
-                            help="local listen port, default: 1080", 
-                            dest="local_port", required=True)
+        self.add_arg(parser, metavar="PORT", type=int, default=1080,
+                     help="local listen port, default: 1080", 
+                     dest="local_port", required=True)
 
-        parser.add_argument("-H", metavar="REMOTE-HOST", dest="rhost",
-                            help="remote ss server host, format is hostname:port"
-                            "eg. ssbetter.org:8888", required=True,)
+        self.add_arg(parser, metavar="REMOTE-HOST", dest="rhost",
+                     help="remote ss server host, format is hostname:port"
+                     "eg. ssbetter.org:8888", required=True, type=self._check_rhost)
 
         self.add_common_argument(parser)
 
-        parser.add_argument("--gfw-list", type=self._check_iplist, metavar="IPLIST",
-                            help="a file which contains host forbidden by gfw",
-                            dest="gfwlist")
+        self.add_arg(parser, type=self._check_iplist, metavar="IPLIST",
+                     help="a file which contains host forbidden by gfw",
+                     dest="gfwlist")
         self.add_general_argument(self.local_parser)
 
     def _to_abspath(self, p):
@@ -119,6 +148,16 @@ class Command(object):
             basedir = os.getcwd()
             p = os.path.join(basedir, p)
         return p
+
+    def _check_rhost(self, r):
+        try:
+            h, p = r.split(":")
+            if h.startswith("127") or \
+                h == "0.0.0.0":
+                logging.warn("make sure your remote host config `%s` is right" % r)
+            return h, int(p)
+        except Exception:
+            raise argparse.ArgumentTypeError("invalid rhost value `%s`" % r)
 
     def _check_addr(self, addr):
         return to_bytes(addr)
@@ -211,32 +250,36 @@ class Command(object):
                 break
         return cfg
 
+    def gen_argv(self, subcmd, cfg):
+        argv = [subcmd]
+        for key in cfg:
+            k = self.DEST_K.get(key)
+            if k:
+                if type(cfg[key]) is bool:
+                    if cfg[key]:argv += [k, ]
+                else:
+                    argv += [k, str(cfg[key])]
+        return argv
+
     def parse(self, args=None):
         if not args:
             args = sys.argv[1:]
         cfg = self._cfg_param(args)
-
-        if not args:
-            return self.parser.parse_args(args).__dict__
-        elif not cfg:
-            return self.parser.parse_args(args).__dict__
-        else:
+        d = lambda p: p.__dict__
+        if args and cfg:
             subc = args[0]
-            try:
-                if subc not in ["local", "server"]:
-                    raise argparse.ArgumentTypeError
-                config = self._check_config(cfg)
-                config["subcmd"] = subc
-                return config
-            except argparse.ArgumentTypeError:
-                self.parser.parse_args([subc, "-c%s"%cfg])
+            config = self._check_config(cfg)
+            args = self.gen_argv(subc, config)
+        return d(self.parser.parse_args(args))
             
-
 
 def get_cofing_from_cli():
     from ss import settings
     cmd = Command()
     cfg = cmd.parse()
+    if "rhost" in cfg:
+        cfg["server"], cfg["server_port"] =  cfg["rhost"]
+        del cfg["rhost"]
     settings.settings.__dict__ = cfg
     config_logging(cfg)
     return cfg
