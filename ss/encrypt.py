@@ -22,8 +22,8 @@ import sys
 import hashlib
 import logging
 
-from shadowsocks import common
-from shadowsocks.crypto import rc4_md5, openssl, sodium, table
+from ss import utils
+from ss.crypto import rc4_md5, openssl, sodium, table
 
 
 method_supported = {}
@@ -94,7 +94,7 @@ class Encryptor(object):
         return len(self.cipher_iv)
 
     def get_cipher(self, password, method, op, iv):
-        password = common.to_bytes(password)
+        password = utils.to_bytes(password)
         m = self._method_info
         if m[0] > 0:
             key, iv_ = EVP_BytesToKey(password, m[0], m[1])

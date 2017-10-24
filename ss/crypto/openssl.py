@@ -20,8 +20,8 @@ from __future__ import absolute_import, division, print_function, \
 from ctypes import c_char_p, c_int, c_long, byref,\
     create_string_buffer, c_void_p
 
-from shadowsocks import common
-from shadowsocks.crypto import util
+from ss import utils
+from ss.crypto import util
 
 __all__ = ['ciphers']
 
@@ -74,7 +74,7 @@ class OpenSSLCrypto(object):
         self._ctx = None
         if not loaded:
             load_openssl()
-        cipher_name = common.to_bytes(cipher_name)
+        cipher_name = utils.to_bytes(cipher_name)
         cipher = libcrypto.EVP_get_cipherbyname(cipher_name)
         if not cipher:
             cipher = load_cipher(cipher_name)
