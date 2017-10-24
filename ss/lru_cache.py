@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 
+"""
+a lru_cache container/decorator derivatived from django
+"""
+
+from functools import wraps, update_wrapper
 from collections import namedtuple
 _CacheInfo = namedtuple("CacheInfo", ["hits", "misses", "maxsize", "currsize"])
 
@@ -7,7 +12,7 @@ _CacheInfo = namedtuple("CacheInfo", ["hits", "misses", "maxsize", "currsize"])
 HITS, MISSES = 0, 1
 PREV, NEXT, KEY, RESULT = 0, 1, 2, 3    # names for the link fields
 
-__all__ = ["LRUCache"]
+__all__ = ["LRUCache", "lru_cache"]
 
 class LRUCache(object):
     
@@ -68,3 +73,55 @@ class LRUCache(object):
         return _CacheInfo(self._stats[HITS], self._stats[MISSES], 
                 self._maxsize, len(self._cache)).__repr__()
 
+
+def lru_cache(maxsize=100, ismethod=True):
+
+    def _lru_cache(func):
+        lruc = LRUCache(maxsize)
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            index = 1 if ismethod else 0
+            key = args[index]
+            if key in lruc:
+                return lruc[key]
+            else:
+                val = func(*args, **kwargs)
+                lruc[key] = val
+                return val
+        wrapper.__wrapped__ = func
+        wrapper.cache_info = lruc.__repr__
+        wrapper.cache_clear = lruc.__del__
+        return update_wrapper(wrapper, func)
+    return _lru_cache
+
+if __name__ == "__main__":
+    import sys
+    @lru_cache(ismethod=False)
+    def f(key):
+        print("execute f with key = %s" % key)
+        return key.upper()
+    @lru_cache(ismethod=False)
+    def g(key):
+        print("execute g with key = %s" % key)
+        return key.upper()
+    
+    class A(object):
+        @lru_cache()
+        def h(self, x):
+            print("execute h with key = %s" % x)
+            return x.upper()
+
+
+    f("aaa")
+    f("ddd")
+    f("aaa")
+
+    g("aaa")
+    g("ppp")
+    g("aaa")
+    g("qqq")
+
+    a = A()
+    a.h("hhhh")
+    a.h("gggg")
+    a.h("hhhh")
