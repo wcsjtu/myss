@@ -233,6 +233,8 @@ class LocalMixin(BaseMixin):
     def _exclusive_host(self, host):
         hostlist = self._config["gfwlist"] if self.ISLOCAL\
             else self._config["forbidden_ip"]
+        if not hostlist:    # default behavior
+            return bool(self.ISLOCAL)
         for regex in hostlist:
             if regex.search(host):
                 return True    

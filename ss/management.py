@@ -123,13 +123,13 @@ class Command(object):
     def add_local_argument(self):
         parser = self.local_parser
         self.add_arg(parser, metavar="ADDR", dest="local_address", 
-                     default="127.0.0.1", required=True,
+                     default="127.0.0.1",
                      help="interface for local server to listen on, "
                      "default is 127.0.0.1" , type=self._check_addr)
 
         self.add_arg(parser, metavar="PORT", type=int, default=1080,
                      help="local listen port, default: 1080", 
-                     dest="local_port", required=True)
+                     dest="local_port" )
 
         self.add_arg(parser, metavar="REMOTE-HOST", dest="rhost",
                      help="remote ss server host, format is hostname:port"
@@ -139,7 +139,7 @@ class Command(object):
 
         self.add_arg(parser, type=self._check_iplist, metavar="IPLIST",
                      help="a file which contains host forbidden by gfw",
-                     dest="gfwlist")
+                     dest="gfwlist", default=[])
         self.add_general_argument(self.local_parser)
 
     def _to_abspath(self, p):
