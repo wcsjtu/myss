@@ -29,7 +29,8 @@ import errno
 import logging
 import threading
 from collections import defaultdict
-from . import utils
+from ss import utils
+from ss.settings import settings
 
 TIMEOUT_PRECISION = 10
 
@@ -288,7 +289,7 @@ class Timeout(object):
         while pos < size:
             fd = self.FD_QUEUE[pos]
             if fd:
-                if now - self.FD_LASTACTIVITY[fd] < 300:
+                if now - self.FD_LASTACTIVITY[fd] < settings.timeout:
                     break
                 handler = self.FD_HANDLERS[fd]
                 logging.info("connect %s:%s timeout" % handler._addr)

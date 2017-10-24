@@ -11,13 +11,14 @@ def to_bytes(s):
         return s.encode("utf8")
     return s
 
+
 class Command(object):
 
     DESC = "A fast tunnel proxy that helps you bypass firewalls."
     USAGE="myss <subcommand> [options] [args]"
 
     def __init__(self, parser=None):
-        config_logging()
+        
         self.parser = parser if parser else \
                 argparse.ArgumentParser(description=self.DESC,
                 usage=self.USAGE
@@ -39,7 +40,7 @@ class Command(object):
         parser.add_argument("--log-file", help="log file for daemon mode", 
                             type=self._check_path, dest="log_file")
         parser.add_argument("--user", help="username to run as")
-        parser.add_argument("--quite", help="quiet mode, only show warnings and errors",
+        parser.add_argument("--quiet", help="quiet mode, only show warnings and errors",
                              action='store_true')
         parser.add_argument("--version", help="show version information",
                              action='version', version='myss 0.0')
@@ -223,14 +224,16 @@ class Command(object):
 
 
 def get_cofing_from_cli():
+    from ss import settings
     cmd = Command()
-    return cmd.parse()
+    cfg = cmd.parse()
+    settings.settings.__dict__ = cfg
+    config_logging(cfg)
+    return cfg
 
 def run(io_loop=None):
     config = get_cofing_from_cli()
     from ss.ioloop import IOLoop
-    from ss.core.tcphandler import ListenHandler,\
-        RemoteConnHandler, LocalConnHandler
     if not io_loop:
         io_loop = IOLoop()
     subcmd = config.get("subcmd")
@@ -330,11 +333,18 @@ def run_server(io_loop, config):
         logging.info('worker started')
         start()
 
-def config_logging():
+def config_logging(cfg):
     logging.getLogger('').handlers = []
-    logging.basicConfig(level=logging.INFO,
-                        format='%(asctime)s %(levelname)-8s lineno[%(lineno)d] %(message)s',
-                        datefmt='%Y-%m-%d %H:%M:%S')
+    kwargs = dict(
+        format='%(asctime)s %(levelname)-8s lineno[%(lineno)d] %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    kwargs["level"] = logging.WARN if cfg.get("quiet") \
+        else logging.INFO
+    if kwargs.get("log_file"):
+        kwargs["filename"] = kwargs["log_file"]
+
+    logging.basicConfig(**kwargs)
 
 if __name__ == "__main__":
     c = Command()
