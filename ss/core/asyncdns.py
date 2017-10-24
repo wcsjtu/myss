@@ -255,7 +255,7 @@ class DNSResolver(object):
         self._hostname_status = {}
         self._hostname_to_cb = {}
         self._cb_to_hostname = {}
-        self._cache = LRUCache(maxsize=100000)
+        self._cache = LRUCache(maxsize=10000)
         self._sock = None
         self._registered = False
         self._servers = None
