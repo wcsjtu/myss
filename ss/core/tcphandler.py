@@ -91,6 +91,8 @@ class ConnHandler(BaseTCPHandler):
         utils.merge_prefix(write_buf, self.BUF_SIZE)
         while write_buf:
             try:
+                if not self._sock:
+                    break
                 length = self._sock.send(write_buf[0])
                 if length:
                     utils.merge_prefix(write_buf, length)
