@@ -106,6 +106,8 @@ class ConnHandler(object):
             return
         if self._closed:
             raise RuntimeError("register a closed fd to ioloop" )
+        if not self.io_loop:
+            self.io_loop = IOLoop()
         self.io_loop.register(self._sock, IOLoop.READ|IOLoop.ERROR, self)
         self._events = IOLoop.READ|IOLoop.ERROR
         self._registered = True
@@ -279,6 +281,8 @@ class ListenHandler(object):
             return
         if self._closed:
             raise Exception('already closed')
+        if not self.io_loop:
+            self.io_loop = IOLoop()
         self.io_loop.register(self._sock, IOLoop.READ|IOLoop.ERROR, self)
         self._events = IOLoop.READ|IOLoop.ERROR
         self._registered = True

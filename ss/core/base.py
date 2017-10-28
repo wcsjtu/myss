@@ -91,11 +91,13 @@ class BaseTCPHandler(object):
 
     def register(self):
         if self._registered:
-            logging.warning("%s already registered!" % self.__class__.__name__)
+            logging.warning(" already registered!" )
             return
         if self.closed:
             raise RuntimeError("service %s has been shut down!" % \
             self.__class__.__name__)
+        if not self.io_loop:
+            self.io_loop = IOLoop()
         self.io_loop.register(self._sock, IOLoop.READ|IOLoop.ERROR, self)
         self._events = IOLoop.READ|IOLoop.ERROR
         self._registered = True

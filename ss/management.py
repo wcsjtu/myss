@@ -286,9 +286,9 @@ def get_cofing_from_cli():
 
 def run(io_loop=None):
     config = get_cofing_from_cli()
-    from ss.ioloop import IOLoop
-    if not io_loop:
-        io_loop = IOLoop()
+    
+    # if not io_loop:
+    #     io_loop = IOLoop()
     subcmd = config.get("subcmd")
     handlers = {"local": run_local, "server": run_server}
     return handlers[subcmd](io_loop, config)
@@ -326,6 +326,7 @@ def run_local(io_loop, config):
 def run_server(io_loop, config):
     from ss.core import tcphandler, udphandler
     from ss.core.asyncdns import DNSResolver
+    from ss.ioloop import IOLoop
     sa = config['server'], config['server_port']
     logging.info("starting server at %s:%d" % sa)
 
@@ -343,9 +344,11 @@ def run_server(io_loop, config):
         logging.warn('all servers have been shut down')
 
     def start():
+        
         try:
             for server in servers:
                 server.register()
+            io_loop = IOLoop()
             io_loop.run()
         except Exception as e:
             logging.error(e, exc_info=True)
@@ -379,7 +382,7 @@ def run_server(io_loop, config):
             signal.signal(signal.SIGINT, on_master_exit)
 
             for server in servers:
-                server.destroy()
+                server._sock.close()
             for child in children:
                 os.waitpid(child, 0)
     else:

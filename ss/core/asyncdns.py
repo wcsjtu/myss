@@ -262,6 +262,9 @@ class DNSResolver(object):
         self._keepalive = True
         self._parse_resolv()
         self._parse_hosts()
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM,
+                                   socket.SOL_UDP)
+        self._sock.setblocking(False)
         # TODO monitor hosts change and reload hosts
         # TODO parse /etc/gai.conf and follow its rules
 
@@ -309,9 +312,9 @@ class DNSResolver(object):
         if self._registered:
             raise Exception('already add to loop')
         # TODO when dns server is IPv6
-        self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM,
-                                   socket.SOL_UDP)
-        self._sock.setblocking(False)
+        
+        if not self.io_loop:
+            self.io_loop = IOLoop()
         self.io_loop.add(self._sock, IOLoop.READ, self)
         self.io_loop.add_periodic(self.handle_periodic)
         self._registered = True
