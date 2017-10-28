@@ -97,7 +97,7 @@ class BaseTCPHandler(object):
             raise RuntimeError("service %s has been shut down!" % \
             self.__class__.__name__)
         if not self.io_loop:
-            self.io_loop = IOLoop()
+            self.io_loop = IOLoop.current()
         self.io_loop.register(self._sock, IOLoop.READ|IOLoop.ERROR, self)
         self._events = IOLoop.READ|IOLoop.ERROR
         self._registered = True

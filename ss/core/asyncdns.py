@@ -314,7 +314,7 @@ class DNSResolver(object):
         # TODO when dns server is IPv6
         
         if not self.io_loop:
-            self.io_loop = IOLoop()
+            self.io_loop = IOLoop.current()
         self.io_loop.add(self._sock, IOLoop.READ, self)
         self.io_loop.add_periodic(self.handle_periodic)
         self._registered = True

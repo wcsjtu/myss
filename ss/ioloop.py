@@ -150,6 +150,8 @@ class IOLoop(object):
 
     _instance_lock = threading.Lock()
 
+    _current = threading.local()
+
     def __init__(self):
         if hasattr(select, 'epoll'):
             self._impl = select.epoll()
@@ -176,6 +178,7 @@ class IOLoop(object):
             with IOLoop._instance_lock:
                 if not hasattr(IOLoop, "_instance"):
                     IOLoop._instance = IOLoop()
+                    IOLoop._current.instance = IOLoop._instance
         return IOLoop._instance
 
     @staticmethod

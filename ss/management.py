@@ -288,7 +288,7 @@ def run(io_loop=None):
     config = get_cofing_from_cli()
     
     # if not io_loop:
-    #     io_loop = IOLoop()
+    #     io_loop = IOLoop.current()
     subcmd = config.get("subcmd")
     handlers = {"local": run_local, "server": run_server}
     return handlers[subcmd](io_loop, config)
@@ -348,7 +348,7 @@ def run_server(io_loop, config):
         try:
             for server in servers:
                 server.register()
-            io_loop = IOLoop()
+            io_loop = IOLoop.current()
             io_loop.run()
         except Exception as e:
             logging.error(e, exc_info=True)
