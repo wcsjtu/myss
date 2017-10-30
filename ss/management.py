@@ -383,8 +383,8 @@ def run_server(io_loop, config):
 
             for server in servers:
                 server._sock.close()
-            for child in children:
-                os.waitpid(child, 0)
+            #for child in children:
+            #    os.waitpid(child, 0)
     else:
         logging.info('worker started')
         start()
