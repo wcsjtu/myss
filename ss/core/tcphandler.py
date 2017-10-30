@@ -9,7 +9,7 @@ from ss import utils
 from ss.ioloop import IOLoop
 
 from .base import BaseTCPHandler, \
-    RemoteMixin, LocalMixin
+    RemoteMixin, LocalMixin, HttpLocalMixin
 
     
 class ConnHandler(BaseTCPHandler):
@@ -38,6 +38,11 @@ class ConnHandler(BaseTCPHandler):
             elif self._status == self.STAGET_SOCKS5_NEGO:
                 self.on_recv_syn()
             elif self._status == self.STAGE_PEER_CONNECTED:
+                self.on_read()
+            else:
+                # it will take few time transfer status from 
+                # STAGE_SOCKS5_SYN to STAGE_DNS_RESOVED. During 
+                # this period, fd may become readable. 
                 self.on_read()
         if events & IOLoop.WRITE:
                 self.on_write()
@@ -129,6 +134,9 @@ class ConnHandler(BaseTCPHandler):
         data = self._codec(data)
         self._read_buf.append(data)
         self._rbuf_size += len(data)
+        if self._rbuf_size >= self.MAX_BUF_SIZE:
+            logging.warn("connection: %s:%d read buffer over flow!" % self._addr)
+            self.destroy()
         
     @property
     def togfw(self):
@@ -245,3 +253,10 @@ class LocalConnHandler(ConnHandler, LocalMixin):
     def __init__(self,  io_loop, conn, addr, dns_resolver, tags, **options):
         ConnHandler.__init__(self, io_loop, conn, addr, tags, **options)
         LocalMixin.__init__(self, dns_resolver)
+
+
+class HttpLocalConnHandler(ConnHandler, HttpLocalMixin):
+
+    def __init__(self,  io_loop, conn, addr, dns_resolver, tags, **options):
+        ConnHandler.__init__(self, io_loop, conn, addr, tags, **options)
+        HttpLocalMixin.__init__(self, dns_resolver)

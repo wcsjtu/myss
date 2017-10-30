@@ -1,5 +1,5 @@
 ﻿# -*- coding: utf-8 -*-
-
+import re
 import collections
 import logging
 import errno
@@ -49,6 +49,7 @@ class BaseTCPHandler(object):
     HDL_POSITIVE, HDL_NEGATIVE, HDL_LISTEN = (0, 1, 2)
     BACKLOG = 1024
     BUF_SIZE = 32 * 1024
+    MAX_BUF_SIZE = 52428800    # 50MB
 
     def __init__(self, io_loop, conn, addr, tags, **options):
         """
@@ -186,7 +187,43 @@ class BaseTCPHandler(object):
         
 
 class BaseMixin(object):
-    """"""
+    """
+    status explanation:
+        all status are `Past tense`, means the event which the literal meaning of 
+        status varible has been already happend. For example, `STAGE_DNS_RESOVED`
+        means that hostname has been resolved into ip addr. 
+
+        STAGE_INIT: default init status when handler created. It may be different 
+        between proxy. Http tunnel has not negotiation process, so the init status
+        for `LocalConnHandler` is `STAGET_SOCKS5_NEGO`.  
+
+        STAGET_SOCKS5_NEGO: received socks5 negotiation request from application, 
+        and negotiation response data has been cached in write buffer
+
+        STAGE_SOCKS5_SYN: received socks5 or http connect request, and connect response
+        data are cached in write buffer, frame data of shadowsocks protocol has been cached
+        in read buffer(equals to peer socket's write buffer). 
+
+        STAGE_DNS_RESOVED: target host in socks5/http connect request has been resolved successfully.
+        
+        STAGE_PEER_CONNECTED: the relay link, which includes three connections, application <--> local, 
+        local <--> server, server <--> target host, have been created. tcp data can be transfered on 
+        this link now.
+
+        STAGE_CLOSED: relay link has been broken. All sockets in this link haven been closed. 
+
+    status transition:
+
+                       recv nego data                            recv conn request
+        STAGE_INIT  --------------------->  STAGET_SOCKS5_NEGO ---------------------> STAGE_SOCKS5_SYN
+            ^                                                                                |
+            |                                                                                | 
+            |new conn                                                    target host resolved|
+            |                                                                                |
+            |           any sock on relay                           peer sock created        V
+        STAGE_CLOSED <--------------------- STAGE_PEER_CONNECTED <--------------------- STAGE_DNS_RESOVED
+                       link has been closed
+    """
 
     STAGE_INIT = 0 
     STAGET_SOCKS5_NEGO = 1 
@@ -374,3 +411,116 @@ class RemoteMixin(BaseMixin):
             self.destroy()
 
 
+class HttpRequestError(Exception):
+    
+    def __init__(self, code, reason):
+        self.code = code
+        super(HttpRequestError, self).__init__(reason)
+
+    def __str__(self):
+        return "%d %s" % (self.code, self.message)
+
+
+class HttpLocalMixin(LocalMixin):
+
+    MAX_HEADER_LEN = 1024*8 # max length from nginx
+
+    def __init__(self, dns_resolver):
+        super(HttpLocalMixin, self).__init__(dns_resolver)
+        # http has no nego
+        self._status = self.STAGET_SOCKS5_NEGO
+
+    def read_until(self, regex, maxrange=None):
+        if not self._read_buf:
+            return ""
+        maxrange = maxrange or self.MAX_HEADER_LEN
+        utils.merge_prefix(self._read_buf, maxrange)
+        pattern = re.compile(regex)
+        m = pattern.search(self._read_buf[0])
+        if m:
+            endpos = m.end()
+            utils.merge_prefix(self._read_buf, endpos)
+            data = self._read_buf.popleft()
+            self._rbuf_size -= endpos
+            return data
+        else:
+            if len(self._read_buf[0]) >= maxrange:
+                # not found regex in specified range
+                # bad request, need to close socket soon
+                raise HttpRequestError(413, "Entity Too Large")
+            else:
+                # need more data
+                return ""
+
+    def on_recv_syn(self):
+        if self._status == self.STAGE_CLOSED:
+            logging.warning("read on closed socket!")
+            self.destroy()
+            return
+        data = None
+        try:
+            data = self._sock.recv(self.BUF_SIZE)
+        except (OSError, IOError) as e:
+            if utils.errno_from_exception(e) in \
+                (errno.ETIMEDOUT, errno.EAGAIN, errno.EWOULDBLOCK):
+                return
+        if not data:
+            self.destroy()
+            return
+        self._append_to_rbuf(data)  # method from BaseTcpHandler
+        try:
+            http_request = self.read_until("\r\n\r\n")
+            if not http_request:
+                return
+            http_response, ss_premble, addr = http2shadosocks(http_request)
+            self._write_buf.append(http_response)
+            self._wbuf_size += len(http_response)
+            if self._exclusive_host(addr[0]):
+                self._append_to_rbuf(ss_premble, codec=True)
+                self._peer_addr = self._sshost()        # connect ssserver
+            else:
+                self._direct_conn = True
+                self._peer_addr = addr
+            self._status = self.STAGE_SOCKS5_SYN
+            self._dns_resolver.resolve(self._peer_addr[0], 
+                                   self._on_dns_resolved)          
+        except HttpRequestError as e:
+            logging.warn(e)
+            self.destroy()
+            return
+
+
+def http2shadosocks(data):
+    """
+    genearte http response and shadowsocks premble
+    """
+    words = data.split()
+    if len(words) < 3:
+        raise HttpRequestError(400, "Bad request version")
+    method, path, version = words[:3]
+    if method.upper() != "CONNECT":
+        raise HttpRequestError(400, 
+            "Bad request type (%r)" % method)
+    if version[:5] != 'HTTP/':
+        raise HttpRequestError(400, 
+            "Bad request version (%r)" % version)
+        
+    http_response = "%s 200 Connection Established" % version
+    # socks5 request format
+    cmd = 0x01  # connect
+    host, port = path.split(":")
+    atyp = utils.is_ip(host)
+    if not atyp:
+        atyp = struct.pack("!B", 0x03)
+        addr = struct.pack("!B", len(host)) + \
+            utils.to_str(host)
+    elif atyp == socket.AF_INET:
+        addr = utils.inet_pton(atyp, host)
+        atyp = struct.pack("!B", 0x01)
+    else:
+
+        addr = utils.inet_pton(atyp, host)
+        atyp = struct.pack("!B", 0x04)
+    premble = atyp + addr + struct.pack("!H", int(port))
+    addr = (utils.to_str(host), port)
+    return http_response, premble, addr

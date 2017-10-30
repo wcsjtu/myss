@@ -35,6 +35,7 @@ class Command(object):
               "manager_address": "--manager-address",
               "local_address": "-s", 
               "local_port": "-P", 
+              "local_http_port": "-http-port", 
               "rhost": "-H", 
               "user": "--user",
               "gfwlist": "--gfw-list", 
@@ -130,6 +131,10 @@ class Command(object):
         self.add_arg(parser, metavar="PORT", type=int, default=1080,
                      help="local listen port, default: 1080", 
                      dest="local_port" )
+
+        self.add_arg(parser, metavar="HTTP-PORT", type=int, default=1081,
+                     help="listen port for http tunnel, default is 1081", 
+                     dest="local_http_port" )
 
         self.add_arg(parser, metavar="REMOTE-HOST", dest="rhost",
                      help="remote ss server host, format is hostname:port"
@@ -296,6 +301,9 @@ def run(io_loop=None):
 def run_local(io_loop, config):
     from ss.core import tcphandler, udphandler
     from ss.core.asyncdns import DNSResolver
+    from ss.ioloop import IOLoop
+    if not io_loop:
+        io_loop = IOLoop.current()
     try:
         sa = config['local_address'], config['local_port']
         logging.info("starting local at %s:%d" % sa)
@@ -304,14 +312,22 @@ def run_local(io_loop, config):
             tcphandler.LocalConnHandler, dns_resolver, **config)
         udp_server = udphandler.ListenHandler(io_loop, sa, 
             udphandler.ConnHandler, 1, dns_resolver, **config)  # 1 means local
-        dns_resolver.register()
-        udp_server.register()
-        tcp_server.register()
+        servers = [dns_resolver, tcp_server, udp_server]
+
+        if config.get("local_http_port"):
+            http_sa = config['local_address'], config['local_http_port']
+            logging.info("starting local http tunnel at %s:%d" % http_sa)
+            http_tunnel = tcphandler.ListenHandler(io_loop, http_sa, 
+                tcphandler.HttpLocalConnHandler, dns_resolver, **config)
+            servers.append(http_tunnel)
+
+        for server in servers:
+            server.register()
 
         def on_quit(s, _):
             logging.warn('received SIGQUIT, doing graceful shutting down..')
-            tcp_server.destroy()
-            udp_server.destroy()
+            for server in servers:
+                server.destroy()
 
         def on_interrupt(s, _):
             sys.exit(1)
