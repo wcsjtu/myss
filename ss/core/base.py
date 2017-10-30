@@ -195,7 +195,7 @@ class BaseMixin(object):
 
         STAGE_INIT: default init status when handler created. It may be different 
         between proxy. Http tunnel has not negotiation process, so the init status
-        for `LocalConnHandler` is `STAGET_SOCKS5_NEGO`.  
+        for `HttpLocalConnHandler` is `STAGET_SOCKS5_NEGO`.  
 
         STAGET_SOCKS5_NEGO: received socks5 negotiation request from application, 
         and negotiation response data has been cached in write buffer
