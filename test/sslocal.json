@@ -1,0 +1,10 @@
+{
+    "rhost": "127.0.0.1:7410",
+    "local_address": "127.0.0.1",
+    "local_port": 1088,
+    "local_http_port": 1089,
+    "password": "123456",
+    "timeout": 300,
+    "method": "aes-256-cfb",
+    "fast_open": false
+}
