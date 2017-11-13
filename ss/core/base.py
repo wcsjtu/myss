@@ -508,7 +508,10 @@ def http2shadosocks(data):
     http_response = "%s 200 Connection Established" % version
     # socks5 request format
     cmd = 0x01  # connect
-    host, port = path.split(":")
+    try:
+        host, port = path.split(":")
+    except IndexError:
+        raise HttpRequestError(400, "Bad request")
     atyp = utils.is_ip(host)
     if not atyp:
         atyp = struct.pack("!B", 0x03)
