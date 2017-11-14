@@ -122,6 +122,8 @@ class ConnHandler(BaseTCPHandler):
 
     def on_read(self):
         data = None
+        if not self._sock:
+            return
         try:
             data = self._sock.recv(self.BUF_SIZE)
         except (OSError, IOError) as e:
