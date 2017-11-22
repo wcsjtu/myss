@@ -68,8 +68,9 @@ class ConnHandler(BaseTCPHandler):
 
     def update_events(self, events):
         """"""
-        self.io_loop.modify(self._sock, events)
-        self._events = events
+        if self._sock:
+            self.io_loop.modify(self._sock, events)
+            self._events = events
                 
     def on_write(self):
         # NOTICE 写数据时, 都是从对方的read_buf取出数据写的

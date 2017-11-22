@@ -90,7 +90,7 @@ class BaseTCPHandler(object):
         self._peer_addr = None
         self._tags = tags
 
-    def register(self):
+    def register(self, event=None):
         if self._registered:
             logging.warning(" already registered!" )
             return
@@ -99,8 +99,12 @@ class BaseTCPHandler(object):
             self.__class__.__name__)
         if not self.io_loop:
             self.io_loop = IOLoop.current()
-        self.io_loop.register(self._sock, IOLoop.READ|IOLoop.ERROR, self)
-        self._events = IOLoop.READ|IOLoop.ERROR
+        if event is not None:
+            events = IOLoop.READ|IOLoop.ERROR|event
+        else:
+            events = IOLoop.READ|IOLoop.ERROR
+        self.io_loop.register(self._sock, events, self)
+        self._events = events
         self._registered = True
 
     def handle_events(self, sock, fd, events):
@@ -192,14 +196,15 @@ class BaseTCPHandler(object):
         peer_handler = self.__class__(self.io_loop, sock, sa, self._dns_resolver, 
                                       self.HDL_POSITIVE, **self._config)
         peer_handler._direct_conn = self._direct_conn
-        peer_handler.register()
         self.relate(peer_handler)
         peer_handler.relate(self)
 
+        event = IOLoop.WRITE if peer_handler.writable else None
+        peer_handler.register(event)
         self._status = self.STAGE_PEER_CONNECTED
         peer_handler._status = self.STAGE_PEER_CONNECTED
-        if peer_handler.writable:
-            peer_handler.on_write()
+        
+
         
 
 class BaseMixin(object):
