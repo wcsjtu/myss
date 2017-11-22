@@ -118,6 +118,7 @@ class ConnHandler(BaseTCPHandler):
             self._wbuf_size -= num_bytes
         else:
             peer_handler._rbuf_size -= num_bytes
+        logging.info("socket connected to %s:%d send %d bytes" % (self._addr + (num_bytes, )))
         return num_bytes
 
     def on_read(self):
@@ -135,7 +136,9 @@ class ConnHandler(BaseTCPHandler):
             return
         data = self._codec(data)
         self._read_buf.append(data)
-        self._rbuf_size += len(data)
+        date_length = len(data)
+        self._rbuf_size += date_length
+        logging.info("socket connected to %s:%d recv %d bytes" % ((self._addr)+ (date_length, )))
         if self._rbuf_size >= self.MAX_BUF_SIZE:
             logging.warn("connection: %s:%d read buffer over flow!" % self._addr)
             self.destroy()
@@ -160,7 +163,7 @@ class ConnHandler(BaseTCPHandler):
             return
         self._status = self.STAGE_CLOSED
         if self._sock:
-            logging.info("destroy socket %d" % self._sock.fileno())
+            logging.info("   socket connected to %s:%d closed!" % self._addr)
             self.io_loop.remove(self._sock)
             self._sock.close()
             self._sock = None
@@ -169,7 +172,7 @@ class ConnHandler(BaseTCPHandler):
         if self.peer:
             op_sock = self.peer._sock
             if op_sock:
-                logging.info("destroy related socket %d" % op_sock.fileno())
+                logging.info("(R)socket connected to %s:%d closed!" % self.peer._addr)
                 self.io_loop.remove(op_sock)
                 op_sock.close()
                 if self.peer:

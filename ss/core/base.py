@@ -110,6 +110,20 @@ class BaseTCPHandler(object):
         pass
 
     @property
+    def readable(self):
+        raise NotImplementedError()
+
+    @property
+    def writable(self):
+        raise NotImplementedError()
+
+    def on_write(self):
+        raise NotImplementedError()
+
+    def on_read(self):
+        raise NotImplementedError()
+
+    @property
     def closed(self):
         return self._status == self.STAGE_CLOSED
 
@@ -184,6 +198,8 @@ class BaseTCPHandler(object):
 
         self._status = self.STAGE_PEER_CONNECTED
         peer_handler._status = self.STAGE_PEER_CONNECTED
+        if peer_handler.writable:
+            peer_handler.on_write()
         
 
 class BaseMixin(object):
