@@ -4,7 +4,7 @@ import ss
 
 setup(
     name="myss",
-    version= "0.0.1",
+    version= "0.0.2",
     url = "https://www.wchaos.cn/weblog",
     description = "myss from shadowsocks",
     author = "wcsjtu",
