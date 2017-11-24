@@ -51,8 +51,6 @@ def socks5_request(hostname, port):
 
 class Socks5(object):
 
-    
-
     def __init__(self):
         self.sock = None
         self._proxy_server = (CONFIG["local_address"], 
