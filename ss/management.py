@@ -408,7 +408,7 @@ def run_server(io_loop, config):
 def config_logging(cfg):
     logging.getLogger('').handlers = []
     kwargs = dict(
-        format='%(asctime)s %(levelname)-8s lineno[%(lineno)d] %(message)s',
+        format='%(asctime)s %(levelname)-8s %(message)s',
         datefmt='%Y-%m-%d %H:%M:%S'
     )
     kwargs["level"] = logging.WARN if cfg.get("quiet") \
