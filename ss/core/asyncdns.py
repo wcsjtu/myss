@@ -17,13 +17,13 @@
 
 from __future__ import absolute_import, division, print_function, \
     with_statement
-
+import sys
 import os
 import socket
 import struct
 import re
 import logging
-
+import json
 from ss import utils
 from ss.lru_cache import LRUCache
 from ss.ioloop import IOLoop
@@ -251,6 +251,7 @@ class DNSResolver(object):
 
     def __init__(self, io_loop, **config):
         self.io_loop = io_loop
+        self._config = config
         self._hosts = {}
         self._hostname_status = {}
         self._hostname_to_cb = {}
@@ -262,6 +263,7 @@ class DNSResolver(object):
         self._keepalive = True
         self._parse_resolv()
         self._parse_hosts()
+        self.last_cache()
         self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM,
                                    socket.SOL_UDP)
         self._sock.setblocking(False)
@@ -438,3 +440,42 @@ class DNSResolver(object):
             self._sock.close()
             self._sock = None
         self._registered = False
+        self.atexit()
+
+    def last_cache(self):
+        dns_cache_file = self._config.get("dns_cache")
+        if not dns_cache_file:  # local
+            return
+        path = os.path.expanduser(dns_cache_file)
+        folder = os.path.dirname(path)
+        if not os.path.exists(folder):
+            os.makedirs(folder)
+        if not os.path.exists(path):
+            with open(path, "w") as f:
+                f.write('{}')
+            return
+        try:
+            with open(path, "r") as f:
+                cache = json.load(f)
+            for k in cache:
+                self._cache[k] = cache[k]
+        except Exception:
+            logging.warn("fail to load dns cache")
+            return
+
+    def atexit(self):
+        path = os.path.expanduser(self._config["dns_cache"])
+        keys = self._cache._cache.keys()
+        dns_dict = dict()
+        for k in keys:
+            dns_dict[k] = self._cache[k]
+        f = open(path, "w")
+        try:
+            import fcntl
+            fcntl.lockf(f.fileno(), fcntl.LOCK_EX)
+        except ImportError:
+            pass
+        finally:
+            json.dump(dns_dict, f)
+            f.close()
+            sys.exit(0)

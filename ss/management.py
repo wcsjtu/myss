@@ -29,6 +29,7 @@ class Command(object):
               "timeout": "-t", 
               "fast_open": "--fast-open",
               "server": "-s", 
+              "dns_cache": "--dns-cache-file",
               "workers": "--workers", 
               "server_port": "-P",
               "forbidden_ip": "--forbidden-ip", 
@@ -119,6 +120,9 @@ class Command(object):
 
         self.add_arg(parser, dest="manager_address",
                      help="optional server manager UDP address, see wiki")
+        self.add_arg(parser, dest="dns_cache", default="~/.sscache/dns.cache",
+                    help="path to dns cache file. default is `~/.sscache/dns.cache`")
+        
         self.add_general_argument(self.server_parser)
 
     def add_local_argument(self):
@@ -276,7 +280,7 @@ class Command(object):
             config = self._check_config(cfg)
             args = self.gen_argv(subc, config)
         return d(self.parser.parse_args(args))
-            
+
 
 def get_cofing_from_cli():
     from ss import settings
@@ -307,7 +311,7 @@ def run_local(io_loop, config):
     try:
         sa = config['local_address'], config['local_port']
         logging.info("starting local at %s:%d" % sa)
-        dns_resolver = DNSResolver(io_loop)
+        dns_resolver = DNSResolver(io_loop, **config)
         tcp_server = tcphandler.ListenHandler(io_loop, sa, 
             tcphandler.LocalConnHandler, dns_resolver, **config)
         udp_server = udphandler.ListenHandler(io_loop, sa, 
@@ -346,12 +350,12 @@ def run_server(io_loop, config):
     sa = config['server'], config['server_port']
     logging.info("starting server at %s:%d" % sa)
 
-    dns_resolver = DNSResolver(io_loop)
+    dns_resolver = DNSResolver(io_loop, **config)
     tcp_server = tcphandler.ListenHandler(io_loop, sa, 
         tcphandler.RemoteConnHandler, dns_resolver, **config)
     upd_server = udphandler.ListenHandler(io_loop, sa, 
         udphandler.ConnHandler, 0, dns_resolver, **config)
-    servers = [dns_resolver, tcp_server, upd_server]
+    servers = [tcp_server, upd_server, dns_resolver]
 
     def on_quit(s, _):
         logging.warn('received SIGQUIT, doing graceful shutting down..')
@@ -359,8 +363,14 @@ def run_server(io_loop, config):
             server.destroy()
         logging.warn('all servers have been shut down')
 
+    def on_worker_exit():
+        signals = ["SIGTERM", "SIGQUIT", "SIGINT"]
+        for s in signals:
+            sg =  getattr(signal, s, None)
+            if sg:
+                signal.signal(sg, on_quit)
+
     def start():
-        
         try:
             for server in servers:
                 server.register()
@@ -402,6 +412,7 @@ def run_server(io_loop, config):
             #for child in children:
             #    os.waitpid(child, 0)
     else:
+        on_worker_exit()
         logging.info('worker started')
         start()
 
