@@ -74,22 +74,21 @@ class Resp(object):
     def __getitem__(self, i):
         return self._data[i]
 
-    def cut_domain(self, offset=0):
+    def cut_domain(self):
         """get domain from repsonse, return doamin 
         string and its length in protocol"""
         d = self._data
         domain_part = []
-        i = offset or self._offset
+        i = self._offset
         while d[i] != self.DOMAIN_END:
             length = struct.unpack("!B", d[i])[0]
             if length >= 0xc0:
                 i = struct.unpack("!H", d[i:i+2])[0] -0xc000
-                if not offset:
-                    self._offset += 2
+                self._offset += 2
                 continue
             up = i + length + 1
             domain_part.append(d[i+1:up])
-            if up > self._offset:
+            if up >= self._offset:
                 self._offset += (length + 1)
             i = up
         if up >= self._offset:
@@ -129,8 +128,8 @@ def parse_response(data):
     query_cls = resp.cut(2)
 
     for i in xrange(answer_rrs):
-        offset = struct.unpack("!H", resp.cut(2))[0] - 0xc000
-        domain = resp.cut_domain(offset)
+        #offset = struct.unpack("!H", resp.cut(2))[0] - 0xc000
+        domain = resp.cut_domain()
         type = resp.cut(2)
         cls = resp.cut(2)
         ttl = resp.cut(4)
