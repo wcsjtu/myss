@@ -1,22 +1,10 @@
 # -*- coding: utf-8 -*-
-import os
 import sys
-import re
-import json
 import urlparse
 import urllib
 import struct
 import socket
-import time
-
-IPV4_PATTERN = re.compile("^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$")
-
-IPV6_PATTERN = re.compile("(([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:)"\
-"{1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4})"\
-"{1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]"\
-"{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff"\
-"(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a"\
-"-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))")
+import utils
 
 HTTP_TMPL = "%(method)s %(uri)s HTTP/1.1\r\n"\
 "User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64; rv:49.0) Gecko/20100101 Firefox/49.0\r\n"\
@@ -30,17 +18,15 @@ HTTP_TMPL_PAYLOAD = "%(method)s %(uri)s HTTP/1.1\r\n"\
 "\r\n"\
 "%(content)s\r\n"
 
-PWD = os.getcwd()
-
-with open(os.path.join(PWD, "test/sslocal.json"), "r") as f:
-    CONFIG = json.load(f)
+CONFIG = utils.config()
 
 SOCKS5_NEGO = b"\x05\x01\x00"
 
 def socks5_request(hostname, port):
-    if IPV4_PATTERN.match(hostname):
+    atype = utils.atyp(hostname)
+    if atype == utils.IPV4:
         req = b"\x05\x01\x00\x01%s%s" % ( socket.inet_aton(hostname), struct.pack(">H", port) )
-    elif IPV6_PATTERN.match(hostname):
+    elif atype == utils.IPV6:
         print("don't support ipv6 yet!")
         sys.exit(1)
     else:
