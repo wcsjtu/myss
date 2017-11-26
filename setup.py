@@ -12,6 +12,7 @@ setup(
     maintainer_email = "wcsjtu@gmail.com",
     license = "BSD",
     packages = find_packages(),
+    data_files = [("ss/config", ["ss/config/pac"])],
     entry_points={
         'console_scripts':[
             "myss = ss.management:run",

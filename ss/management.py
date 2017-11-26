@@ -12,6 +12,7 @@ def to_bytes(s):
         return s.encode("utf8")
     return s
 
+PWD = os.path.dirname(__file__)
 
 class Command(object):
 
@@ -40,6 +41,7 @@ class Command(object):
               "rhost": "-H", 
               "user": "--user",
               "gfwlist": "--gfw-list", 
+              "pac": "--pac-file",
               "quiet": "--quiet", 
               "verbose": "-v"
             }
@@ -149,6 +151,9 @@ class Command(object):
         self.add_arg(parser, type=self._check_iplist, metavar="IPLIST",
                      help="a file which contains host forbidden by gfw",
                      dest="gfwlist", default=[])
+        self.add_arg(parser, metavar="PAC", dest="pac", default=(PWD+"/config/pac"),
+                     help="pac file, see `https://github.com/clowwindy/gfwlist2pac` for detail"
+                     )
         self.add_general_argument(self.local_parser)
 
     def _to_abspath(self, p):
@@ -306,6 +311,7 @@ def run_local(io_loop, config):
     from ss.core import tcphandler, udphandler
     from ss.core.asyncdns import DNSResolver
     from ss.ioloop import IOLoop
+    from ss.watcher import Scheduler, Pac
     if not io_loop:
         io_loop = IOLoop.current()
     try:
@@ -338,6 +344,9 @@ def run_local(io_loop, config):
             
         signal.signal(signal.SIGINT, on_interrupt)    
         signal.signal(getattr(signal, 'SIGQUIT', signal.SIGTERM), on_quit)
+        schd = Scheduler(**config)
+        schd.register(Pac(30, 1, config["pac"]))
+        schd.start()
         io_loop.run()
     except Exception as e:
         logging.error(e, exc_info=True)

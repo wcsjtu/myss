@@ -11,7 +11,7 @@ import weakref
 from ss.ioloop import IOLoop
 from ss import utils
 from ss.lru_cache import lru_cache
-from . import socks5
+from . import socks5, pac
 
 # These errnos indicate that a non-blocking operation must be retried
 # at a later time.  On most platforms they're the same value, but on
@@ -304,6 +304,14 @@ class LocalMixin(BaseMixin):
         return (self._config["server"], 
             self._config["server_port"])
 
+    def _nego_response(self, data):
+        if data.startswith("GET /pac "):
+            data = str(pac.ProxyAutoConfig())
+            length = len(data)
+        else:
+            data, length = socks5.gen_nego()
+        return data, length
+
     def on_recv_nego(self):
         if self._status == self.STAGE_CLOSED:
             logging.warning("read on closed socket!")
@@ -319,9 +327,9 @@ class LocalMixin(BaseMixin):
         if not data:
             self.destroy()
             return
-        nego, l = socks5.gen_nego()
-        self._write_buf.append(nego)
-        self._wbuf_size += l
+        resp, length = self._nego_response(data)
+        self._write_buf.append(resp)
+        self._wbuf_size += length
         self._status = self.STAGET_SOCKS5_NEGO
         return
         
