@@ -12,6 +12,10 @@ from ss.ioloop import IOLoop
 from ss import utils
 from ss.lru_cache import lru_cache
 from . import socks5, pac
+try:
+    import urlparse
+except ImportError:
+    from urllib import parse as urlparse
 
 # These errnos indicate that a non-blocking operation must be retried
 # at a later time.  On most platforms they're the same value, but on
@@ -305,6 +309,7 @@ class LocalMixin(BaseMixin):
             self._config["server_port"])
 
     def _nego_response(self, data):
+        print data
         if data.startswith("GET /pac "):
             data = str(pac.ProxyAutoConfig())
             length = len(data)
@@ -502,8 +507,9 @@ class HttpLocalMixin(LocalMixin):
             if not http_request:
                 return
             http_response, ss_premble, addr = http2shadosocks(http_request)
-            self._write_buf.append(http_response)
-            self._wbuf_size += len(http_response)
+            if http_response:
+                self._write_buf.append(http_response)
+                self._wbuf_size += len(http_response)
             if self._exclusive_host(addr[0]):
                 self._append_to_rbuf(ss_premble, codec=True)
                 self._peer_addr = self._sshost()        # connect ssserver
@@ -527,18 +533,22 @@ def http2shadosocks(data):
     if len(words) < 3:
         raise HttpRequestError(400, "Bad request version")
     method, path, version = words[:3]
-    if method.upper() != "CONNECT":
-        raise HttpRequestError(400, 
-            "Bad request type (%r)" % method)
+    https = True if method.upper() == "CONNECT" else False
     if version[:5] != 'HTTP/':
         raise HttpRequestError(400, 
             "Bad request version (%r)" % version)
-        
-    http_response = "%s 200 Connection Established" % version
     # socks5 request format
     cmd = 0x01  # connect
     try:
-        host, port = path.split(":")
+        if https:
+            host, port = path.split(":")
+        else:
+            result = urlparse.urlsplit(path)
+            host = result.hostname
+            port = result.port or 80
+            uri = result.path
+            if result.query:
+                data += (result.query + "\r\n")
     except IndexError:
         raise HttpRequestError(400, "Bad request")
     atyp = utils.is_ip(host)
@@ -554,5 +564,9 @@ def http2shadosocks(data):
         addr = utils.inet_pton(atyp, host)
         atyp = struct.pack("!B", 0x04)
     premble = atyp + addr + struct.pack("!H", int(port))
+    if not https:
+        premble += data.replace(path, uri, 1)
     addr = (utils.to_str(host), port)
+    http_response = "%s 200 Connection Established" % version if https else ""
     return http_response, premble, addr
+
