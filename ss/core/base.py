@@ -570,3 +570,9 @@ def http2shadosocks(data):
     http_response = "%s 200 Connection Established" % version if https else ""
     return http_response, premble, addr
 
+# issue: In http proxy condition, if two http proxy request which come from client, were
+# transferred on the same connection, the second request will be marked with `Bad Request` 
+# by remote server. Because proxy server has not formatted original http proxy request to
+# standard http request—— proxy will format request only when handler status is `STAGET_SOCKS5_NEGO`. 
+# howerver, handler's status is `STAGE_PEER_CONNECTED` after the first request completed.
+# So this http proxy is `Dumb Proxy`.
