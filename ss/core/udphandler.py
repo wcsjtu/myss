@@ -140,7 +140,8 @@ class ConnHandler(object):
         header_result = parse_header(data)
         if header_result is None:
             return
-        response = b'\x00\x00\x00' + response
+        if self._tags == self.LOC_TAG:
+            response = b'\x00\x00\x00' + response
         if self.peer_sock:
             self.peer_sock.sendto(response, self._r_addr)
         else:
