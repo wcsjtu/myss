@@ -131,7 +131,7 @@ class ConnHandler(object):
             if not response:
                 return
         else:
-            data = data[3:]
+            #data = data[3:]
             data = encrypt.encrypt_all(self._password, self._method, 0,
                                        data)
             response = data
