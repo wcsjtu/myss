@@ -62,9 +62,17 @@ class Scheduler(sched.scheduler, threading.Thread):
                 # Verify that the event was not removed or altered
                 # by another thread after we last looked at q[0].
                 if event is checked_event:
-                    action(*argument)
-                    delayfunc(0)   # Let other threads run
-                    self.enter(self.intval_map[action],
+                    bt = timefunc()
+                    try:
+                        action(*argument)
+                        delayfunc(0)   # Let other threads run
+                    except Exception as e:
+                        logging.warn(
+                            "occur error when excute watcher %s: %s" % (action.func_name, e)
+                            )
+                        continue
+                    delta = timefunc() - bt # time cost in exec action
+                    self.enter(self.intval_map[action]-delta,
                         priority, action, argument)
                 else:
                     heapq.heappush(q, event)
