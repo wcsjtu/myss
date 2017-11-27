@@ -309,7 +309,6 @@ class LocalMixin(BaseMixin):
             self._config["server_port"])
 
     def _nego_response(self, data):
-        print data
         if data.startswith("GET /pac "):
             data = str(pac.ProxyAutoConfig())
             length = len(data)
