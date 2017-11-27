@@ -567,7 +567,9 @@ def http2shadosocks(data):
     if not https:
         premble += data.replace(path, uri, 1)
     addr = (utils.to_str(host), port)
-    http_response = "%s 200 Connection Established" % version if https else ""
+    http_response = "%s 200 Connection Established\r\n"\
+    "Proxy-Agent: myss\r\n"\
+    "\r\n" % version if https else ""
     return http_response, premble, addr
 
 # issue: In http proxy condition, if two http proxy request which come from client, were
