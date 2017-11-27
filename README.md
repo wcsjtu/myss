@@ -2,6 +2,8 @@
 
 A derivative project from [shadowsocks](https://github.com/shadowsocks/shadowsocks/tree/master). This repo reused lots of breakwall's code, such as `encrypt`, `asyncdns` module and policy to handling timeout connection. Compared with origin shaodowsocks, the main improvement is:
 
+- native proxy conversion from http(s) to socks, now it could work without `privoxy`.
+
 - simplified event handling process in `tcprelay`
 
 - seperate local and remote code in `tcprelay`
@@ -9,8 +11,6 @@ A derivative project from [shadowsocks](https://github.com/shadowsocks/shadowsoc
 - redesigned `lru_cache`. now there's no need to sweep cache periodically
 
 - add `DNS Asynchronous Parse` function to udp forwarding
-
-- add native gfw list support
 
 ## install
 
@@ -51,7 +51,7 @@ python manage.py server --help
 ## TODO
 
 - daemon mode
-- improve performance of handling gfw list
 - flow control
 - ipv6 support
+- auto config when pac changed
 - more
