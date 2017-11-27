@@ -345,7 +345,7 @@ def run_local(io_loop, config):
         signal.signal(signal.SIGINT, on_interrupt)    
         signal.signal(getattr(signal, 'SIGQUIT', signal.SIGTERM), on_quit)
         schd = Scheduler(**config)
-        schd.register(Pac(30, 1, config["pac"]))
+        schd.register(Pac(30, 1, config))
         schd.start()
         io_loop.run()
     except Exception as e:

@@ -24,15 +24,17 @@ class Pac(Watcher):
 
     LastRead = 0
 
-    def run(self, pacfile):
+    def run(self, config):
+        pacfile = config["pac"]
         last = os.path.getmtime(pacfile)
         if last > self.LastRead:
-            self.load(pacfile)
+            self.load(config)
         
 
-    def load(self, pacfile):
+    def load(self, config):
         from ss.core.pac import ProxyAutoConfig
-        ProxyAutoConfig.load(pacfile)
+        pacfile = config["pac"]
+        ProxyAutoConfig.load(pacfile, **config)
         self.LastRead = time.time()
 
 class Scheduler(sched.scheduler, threading.Thread):
@@ -68,8 +70,8 @@ class Scheduler(sched.scheduler, threading.Thread):
                         delayfunc(0)   # Let other threads run
                     except Exception as e:
                         logging.warn(
-                            "occur error when excute watcher %s: %s" % (action.func_name, e)
-                            )
+                            "occur error when excute watcher %s: %s" % (action.func_name, e),
+                            exc_info=True)
                         continue
                     delta = timefunc() - bt # time cost in exec action
                     self.enter(self.intval_map[action]-delta,

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import re
 import logging
 
 class ProxyAutoConfig(object):
@@ -17,9 +17,16 @@ class ProxyAutoConfig(object):
         return s
 
     @classmethod
-    def load(cls, path):
+    def load(cls, path, **config):
         with open(path, "r") as f:
-            cls.content = f.read()
+            data = f.read()
+        host = config["local_address"]
+        socks5_port = config.get("local_port", 1080)
+        http_port = config.get("local_http_port", 1081)
+        proxy = ' proxy = "PROXY %s:%d; SOCKS %s:%d; ";\n' %\
+            (host, http_port, host, socks5_port)
+        data = re.sub("proxy *= *[\s\S]+?\n", proxy, data, 1)
+        cls.content = data
         logging.info("reload pac file : %s" % path)
 
 
