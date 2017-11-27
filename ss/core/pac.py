@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 import re
+import time
 import logging
 
 class ProxyAutoConfig(object):
 
     content = ""
+    URI = "/pac?t="
 
     def __str__(self):
         s = "HTTP/1.1 200 OK\r\n"\
@@ -27,6 +29,7 @@ class ProxyAutoConfig(object):
             (host, http_port, host, socks5_port)
         data = re.sub("proxy *= *[\s\S]+?\n", proxy, data, 1)
         cls.content = data
+        cls.URI = "/pac?t=%d" % int(time.time())
         logging.info("reload pac file : %s" % path)
 
 
