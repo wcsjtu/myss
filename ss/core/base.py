@@ -544,8 +544,11 @@ def http2shadosocks(data):
         else:
             result = urlparse.urlsplit(path)
             host = result.hostname
+            if not host:
+                logging.debug(data)
+                raise HttpRequestError(400, "Bad request")
             port = result.port or 80
-            uri = result.path
+            uri = result.path or "/"
             if result.query:
                 data += (result.query + "\r\n")
     except IndexError:
@@ -559,7 +562,6 @@ def http2shadosocks(data):
         addr = utils.inet_pton(atyp, host)
         atyp = struct.pack("!B", 0x01)
     else:
-
         addr = utils.inet_pton(atyp, host)
         atyp = struct.pack("!B", 0x04)
     premble = atyp + addr + struct.pack("!H", int(port))
