@@ -35,6 +35,7 @@ class Switcher(object):
             elif mode == self.MODE_PAC:
                 host = "http://%(local_address)s:%(local_port)d" % config
                 url = host + ProxyAutoConfig.URI
+                logging.info("pac url: %s" % url)
                 setex(hkey, "ProxyEnable", 0, winreg.REG_DWORD, 0)
                 setex(hkey, "ProxyServer", 0, winreg.REG_SZ, "")
                 setex(hkey, "AutoConfigURL", 0, winreg.REG_SZ, url)
@@ -55,6 +56,7 @@ class Switcher(object):
         try:
             host = "http://%(local_address)s:%(local_port)d" % config
             url = host + ProxyAutoConfig.URI
+            logging.info("pac url: %s" % url)
             setex(hkey, "AutoConfigURL", 0, winreg.REG_SZ, url)
         except Exception as e:
             logging.warn("fail to update pac url: %s" % e)
