@@ -3,8 +3,17 @@ import logging
 import sys
 import os
 import signal
-from ss import utils, cli
+from ss import utils, cli, wrapper
+from ss.config import Switcher
 
+def set_proxy_mode(config):
+    modename = config["proxy_mode"]
+    if modename == "pac":
+        from ss.watcher import Pac
+        Switcher().shift(Switcher.MODE_PAC, **config)
+        Pac.load(**config)
+    elif modename == "global":
+        Switcher().shift(Switcher.MODE_GLB, **config)
 
 def run(io_loop=None):
     config = cli.config()
@@ -41,20 +50,14 @@ def run_local(io_loop, config):
 
         for server in servers:
             server.register()
-
-        def on_quit(s, _):
-            logging.warn('received SIGQUIT, doing graceful shutting down..')
-            for server in servers:
-                server.destroy()
-
-        def on_interrupt(s, _):
-            sys.exit(1)
+            wrapper.onexit(server.destroy)
             
-        signal.signal(signal.SIGINT, on_interrupt)    
-        signal.signal(getattr(signal, 'SIGQUIT', signal.SIGTERM), on_quit)
+        wrapper.register(['SIGQUIT', 'SIGINT', 'SIGTERM'], 
+            wrapper.exec_exitfuncs)
         schd = Scheduler(**config)
-        schd.register(Pac(30, 1, config))
+        schd.register(Pac(15, 1, config))
         schd.start()
+        set_proxy_mode(config)
         io_loop.run()
     except Exception as e:
         logging.error(e, exc_info=True)
@@ -74,23 +77,14 @@ def run_server(io_loop, config):
         udphandler.ConnHandler, 0, dns_resolver, **config)
     servers = [tcp_server, upd_server, dns_resolver]
 
-    def on_quit(s, _):
-        logging.warn('received SIGQUIT, doing graceful shutting down..')
-        for server in servers:
-            server.destroy()
-        logging.warn('all servers have been shut down')
-
-    def on_worker_exit():
-        signals = ["SIGTERM", "SIGQUIT", "SIGINT"]
-        for s in signals:
-            sg =  getattr(signal, s, None)
-            if sg:
-                signal.signal(sg, on_quit)
 
     def start():
         try:
             for server in servers:
                 server.register()
+                wrapper.onexit(server.destroy)
+            wrapper.register(['SIGQUIT', 'SIGINT', 'SIGTERM'], 
+                wrapper.exec_exitfuncs)
             io_loop = IOLoop.current()
             io_loop.run()
         except Exception as e:
@@ -120,16 +114,14 @@ def run_server(io_loop, config):
             else:
                 children.append(rpid)
         if not is_child:
-            signal.signal(signal.SIGTERM, on_master_exit)
-            signal.signal(signal.SIGQUIT, on_master_exit)
-            signal.signal(signal.SIGINT, on_master_exit)
+            wrapper.register(['SIGQUIT', 'SIGINT', 'SIGTERM'], 
+                on_master_exit)
 
             for server in servers:
                 server._sock.close()
             #for child in children:
             #    os.waitpid(child, 0)
     else:
-        on_worker_exit()
         logging.info('worker started')
         start()
 

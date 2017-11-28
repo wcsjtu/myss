@@ -7,7 +7,6 @@ import os
 import json
 
 
-
 def to_bytes(s):
     if type(s) != bytes:
         return s.encode("utf8")
@@ -32,6 +31,7 @@ class Command(object):
               "fast_open": "--fast-open",
               "server": "-s", 
               "dns_cache": "--dns-cache-file",
+              "proxy_mode":"--proxy-mode",
               "workers": "--workers", 
               "server_port": "-P",
               "forbidden_ip": "--forbidden-ip", 
@@ -148,6 +148,10 @@ class Command(object):
 
         self.add_arg(parser, metavar="PAC", dest="pac", default=(PWD+"/config/pac"),
                      help="pac file, see `https://github.com/clowwindy/gfwlist2pac` for detail"
+                     )
+        self.add_arg(parser, dest="proxy_mode", default="pac",
+                    choices=["pac", "global"],
+                    help="proxy mode, one of `pac` and `global`"
                      )
         self.add_general_argument(self.local_parser)
 

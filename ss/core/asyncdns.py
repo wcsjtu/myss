@@ -440,7 +440,7 @@ class DNSResolver(object):
             self._sock.close()
             self._sock = None
         self._registered = False
-        self.atexit()
+        self.on_exit()
 
     def last_cache(self):
         dns_cache_file = self._config.get("dns_cache")
@@ -463,8 +463,11 @@ class DNSResolver(object):
             logging.warn("fail to load dns cache")
             return
 
-    def atexit(self):
-        path = os.path.expanduser(self._config["dns_cache"])
+    def on_exit(self):
+        path = self._config.get("dns_cache")
+        if not path:    # local
+            return
+        path = os.path.expanduser(path)
         keys = self._cache._cache.keys()
         dns_dict = dict()
         for k in keys:
@@ -478,4 +481,3 @@ class DNSResolver(object):
         finally:
             json.dump(dns_dict, f)
             f.close()
-            sys.exit(0)

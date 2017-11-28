@@ -6,6 +6,8 @@ import sched
 import logging
 import heapq
 
+from ss.config import Switcher
+
 class Watcher(object):
 
     def __init__(self, inteval, priority, *run_args):
@@ -28,14 +30,15 @@ class Pac(Watcher):
         pacfile = config["pac"]
         last = os.path.getmtime(pacfile)
         if last > self.LastRead:
-            self.load(config)
+            self.load(**config)
         
-
-    def load(self, config):
+    @classmethod
+    def load(cls, **config):
         from ss.core.pac import ProxyAutoConfig
         pacfile = config["pac"]
         ProxyAutoConfig.load(pacfile, **config)
-        self.LastRead = time.time()
+        cls.LastRead = time.time()
+        Switcher().update_pac(**config)
 
 class Scheduler(sched.scheduler, threading.Thread):
 

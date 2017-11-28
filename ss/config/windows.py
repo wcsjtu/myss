@@ -8,6 +8,7 @@ except ImportError:
     import winreg
 
 from ss.core.pac import ProxyAutoConfig
+from ss.wrapper import onexit
 
 KEY = r"Software\Microsoft\Windows\CurrentVersion\Internet Settings"
 
@@ -47,9 +48,10 @@ class Switcher(object):
         finally:
             hkey.Close()
         
-    def update_pac(self):
+    def update_pac(self, **config):
         hkey = winreg.OpenKey(winreg.HKEY_CURRENT_USER, 
             KEY, 0, winreg.KEY_ALL_ACCESS)
+        setex = winreg.SetValueEx
         try:
             host = "http://%(local_address)s:%(local_port)d" % config
             url = host + ProxyAutoConfig.URI
@@ -59,7 +61,9 @@ class Switcher(object):
         finally:
             hkey.Close()
 
+@onexit
 def on_exit():
+    logging.info("revert intenet settings.")
     Switcher().shift(0)
 
 if __name__ == "__main__":
