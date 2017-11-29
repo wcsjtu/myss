@@ -4,8 +4,8 @@ import ss
 
 setup(
     name="myss",
-    version= "0.0.2",
-    url = "https://www.wchaos.cn/weblog",
+    version= "1.0.0",
+    url = "https://github.com/wcsjtu/myss",
     description = "myss from shadowsocks",
     author = "wcsjtu",
     maintainer = "wcsjtu",
@@ -13,6 +13,7 @@ setup(
     license = "BSD",
     packages = find_packages(),
     data_files = [("ss/config", ["ss/config/pac"])],
+    package_data = {"ss": ["config/pac"]},
     entry_points={
         'console_scripts':[
             "myss = ss.management:run",
