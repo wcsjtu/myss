@@ -4,7 +4,7 @@ sys.path.insert(0, "..")
 from ss.management import run
 
 def main():
-    sys.argv += ["local", "-c", "sslocal.json"]
+    sys.argv += ["local", "-c", "test/sslocal.json"]
     run()
 
 if __name__ == "__main__":

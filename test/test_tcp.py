@@ -114,15 +114,17 @@ class Socks5(object):
         self.close()
         return data
         
-        
-if __name__ == "__main__":
-
+def main():
     urls = [
         "http://www.jd.com/",
         "http://www.baidu.com/"
     ]
 
     sock_client = Socks5()
-
     for url in urls:
         d = sock_client.get(url)
+        assert "HTTP" in d
+        
+if __name__ == "__main__":
+
+    main()

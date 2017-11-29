@@ -141,8 +141,7 @@ class DNSClient(object):
         print ""
         return 
 
-if __name__ == "__main__":
-
+def main():
     dns_client = DNSClient()
 
     hostlist = ["www.google.com.hk", "www.youtube.com", "www.facebook.com",
@@ -150,8 +149,12 @@ if __name__ == "__main__":
 
     cn = [ "www.jd.com", "www.baidu.com", "www.163.com", "cn.bing.com",]
 
-    for h in hostlist:
-        dns_client.nslookup(h)
+    # for h in hostlist:
+    #     dns_client.nslookup(h)
 
     for h in cn:
         dns_client.nslookup(h)
+
+if __name__ == "__main__":
+
+    main()

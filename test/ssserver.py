@@ -5,7 +5,7 @@ from ss.management import run
 
 def main():
     
-    sys.argv += ["server", "-c", "ssserver.json"]
+    sys.argv += ["server", "-c", "test/ssserver.json"]
     run()
 
 if __name__ == "__main__":

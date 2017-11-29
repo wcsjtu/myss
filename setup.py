@@ -14,6 +14,7 @@ setup(
     packages = find_packages(),
     data_files = [("ss/config", ["ss/config/pac"])],
     package_data = {"ss": ["config/pac"]},
+    test_suite="test.test_all",
     entry_points={
         'console_scripts':[
             "myss = ss.management:run",

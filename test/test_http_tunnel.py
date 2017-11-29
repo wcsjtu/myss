@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import socket
-
+from . import utils
 template = "CONNECT %s:%d HTTP/1.1\r\n\r\n"
 
 HTTP_REQUEST = "GET %s HTTP/1.1\r\nUser-Agent:python2.7\r\n\r\n"
 
+CONFIG = utils.config()
 
 class TunnelClient(object):
 
@@ -27,10 +28,12 @@ class TunnelClient(object):
     def close(self):
         self.sock.close()
 
+def main():
+    tc = TunnelClient(("127.0.0.1", CONFIG["local_http_port"]))
+    tc.connect(("www.baidu.com", 80))
+    print tc.send(HTTP_REQUEST % "/")
 
 if __name__ == "__main__":
 
-    tc = TunnelClient(("127.0.0.1", 1089))
-    tc.connect(("www.baidu.com", 80))
-    print tc.send(HTTP_REQUEST % "/")
+    main()
 

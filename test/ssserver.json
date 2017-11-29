@@ -2,7 +2,7 @@
     "server": "0.0.0.0",
     "server_port": 7410,
     "password": "123456",
-    "timeout": 300,
+    "timeout": 15,
     "method": "aes-256-cfb",
     "fast_open": false,
     "log_file": "ssserver.log",
