@@ -9,7 +9,7 @@ class Switcher(object):
     def shift(self, mode, **config):
         pass
 
-    def update_pac(self):
+    def update_pac(self, **config):
         pass
 
 
