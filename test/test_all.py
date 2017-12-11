@@ -10,8 +10,9 @@ import test_tcp, test_udp, test_http_tunnel
 
 def start_services():
     def run(name):
-        filename = "test." + name
-        service = subprocess.Popen("python -m " + filename, shell=False)
+        filename = "%s.py" % name
+        filepath = os.path.join(PWD, filename)
+        service = subprocess.Popen("python " + filepath, shell=False)
         print("run service ss%s" % name)
         return service
 

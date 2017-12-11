@@ -1,10 +1,16 @@
 # -*- coding: utf-8 -*-
 import sys
+import os
 sys.path.insert(0, "..")
 from ss.management import run
 
 def main():
-    sys.argv += ["local", "-c", "test/sslocal.json"]
+    try:
+        folder = os.path.dirname(__file__)
+        path = os.path.join(folder, "sslocal.json")
+    except Exception as e:
+        path = "test/sslocal.json"
+    sys.argv += ["local", "-c", path]
     run()
 
 if __name__ == "__main__":
