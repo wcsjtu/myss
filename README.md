@@ -1,10 +1,12 @@
 # Myss
 
-A derivative project from [shadowsocks](https://github.com/shadowsocks/shadowsocks/tree/master). This repo reused lots of breakwall's code, such as `encrypt`, `asyncdns` module and policy to handling timeout connection. Compared with origin shaodowsocks, the main improvement is:
+A derivative project from [shadowsocks](https://github.com/shadowsocks/shadowsocks/tree/master). Except `encrypt` module, all clowwindy's code are redesigned for complexity and effiency. Compared with origin shaodowsocks, the main improvement is:
 
 - native proxy conversion from http(s) to socks, now it could work without `privoxy`.
 
 - simplified event handling process in `tcprelay`
+
+- simpler and more efficient policy of `asyncdns`
 
 - seperate local and remote code in `tcprelay`
 
