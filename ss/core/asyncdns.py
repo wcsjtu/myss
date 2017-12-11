@@ -103,6 +103,8 @@ class DNSParser(object):
     QTYPE = (QTYPE_A, QTYPE_NS, QTYPE_CNAME, QTYPE_AAAA, QTYPE_ANY) = \
         (1, 2, 5, 28, 255)
 
+    QTYPE_IP = (QTYPE_A, QTYPE_AAAA)
+
     MAX_PART_LENGTH = 63
 
     QCLASS_IN = 1
@@ -249,13 +251,12 @@ class DNSResolver(object):
             return
         ip = ""
         for rr in rrs:
-            if rr.qtype in [DNSParser.QTYPE_A, DNSParser.QTYPE_AAAA) and \
-                rr.qcls == DNSParser.QCLASS_IN:
+            if rr.qtype in DNSParser.QTYPE_IP and rr.qcls == DNSParser.QCLASS_IN:
                 ip = rr.value
                 break
         qtype = self._hostname_status.get(hostname, DNSParser.QTYPE_AAAA)
         if not ip and qtype == DNSParser.QTYPE_A:   # if ipv4 didn't get an ip, try ipv6 again
-            self._send_req(hostname, QTYPE_AAAA)    
+            self._send_req(hostname, DNSParser.QTYPE_AAAA)    
             self._hostname_status[hostname] = DNSParser.QTYPE_AAAA  # update qtype
         elif ip:
             self._cache[hostname] = ip
@@ -293,8 +294,8 @@ class DNSResolver(object):
         
     def add_callback(self, hostname, callback):
         cbs = self._cbs.get(hostname, {})
-        cbs.update(callback=None)
-        self._cbs.update(hostname=cbs)
+        cbs.update({callback: None})
+        self._cbs.update({hostname: cbs})
         
 
     def del_callbacks(self, hostname, callback=None):
