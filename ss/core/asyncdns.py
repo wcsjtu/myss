@@ -230,10 +230,7 @@ class DNSResolver(object):
         self._registered = True
 
     def _call_callback(self, hostname, ip, error=None):
-
-
-        callbacks = self._cbs[hostname].keys()
-        for callback in callbacks:
+        for callback in self._cbs[hostname]:
             if ip or error:
                 callback((hostname, ip), error)
             else:
