@@ -244,7 +244,8 @@ class DNSResolver(object):
         try:
             hostname, rrs = self._dns_parser.parse_response(data)
         except Exception as e:
-            logging.warn("parse dns response error: %s" % str(e), exe_info=True)
+            logging.warn("parse dns response error: %s" % str(e), exc_info=True)
+            #logging.warn(data)
             return
         ip = ""
         for rr in rrs:
