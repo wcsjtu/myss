@@ -14,6 +14,8 @@ def set_proxy_mode(config):
         Pac.load(**config)
     elif modename == "global":
         Switcher().shift(Switcher.MODE_GLB, **config)
+    elif modename == "off":
+        Switcher().shift(Switcher.MODE_OFF, **config)
 
 def run(io_loop=None):
     config = cli.config()
