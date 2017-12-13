@@ -149,9 +149,9 @@ class Command(object):
         self.add_arg(parser, metavar="PAC", dest="pac", default=(PWD+"/config/pac"),
                      help="pac file, see `https://github.com/clowwindy/gfwlist2pac` for detail"
                      )
-        self.add_arg(parser, dest="proxy_mode", default="pac",
-                    choices=["pac", "global"],
-                    help="proxy mode, one of `pac` and `global`"
+        self.add_arg(parser, dest="proxy_mode", default="off",
+                    choices=["pac", "global", "off"],
+                    help="system proxy mode"
                      )
         self.add_general_argument(self.local_parser)
 
