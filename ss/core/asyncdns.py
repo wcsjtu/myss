@@ -150,6 +150,8 @@ class DNSParser(object):
                 data = socket.inet_ntop(socket.AF_INET6,resp.cut(data_length))
             elif qtype in [self.QTYPE_NS, self.QTYPE_CNAME]:   # cname
                 data = resp.cut_domain()
+            else:   # other query type, such as SOA, PTR ant etc.
+                data = resp.cut_domain()
             record = RR(domain, qtype, qcls, ttl, data)
             rs.append(record)
         return rs
