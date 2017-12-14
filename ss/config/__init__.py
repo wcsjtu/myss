@@ -9,4 +9,4 @@ if SYS == "Windows":
 elif SYS == "Linux":
      from .linux import Switcher
 elif SYS == "Darwin":
-    pass
+    from .darwin import Switcher
