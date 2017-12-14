@@ -5,7 +5,8 @@ class Settings(object):
     command-line parameters parsed by `Command` will 
     stored in instance.
     """
-    pass
+    DEFAULT_TIMEOUT = 300
+    timeout = DEFAULT_TIMEOUT
 
 
 
