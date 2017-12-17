@@ -2,15 +2,51 @@
 
 """edit Registry to shift proxy mode."""
 import logging
-try:
-    import _winreg as winreg
-except ImportError:
-    import winreg
+from ctypes import *
+from ctypes.wintypes import *
+
+LPWSTR = POINTER(WCHAR)
+HINTERNET = LPVOID
+
+INTERNET_PER_CONN_FLAGS = 1
+INTERNET_PER_CONN_AUTOCONFIG_URL = 4
+INTERNET_PER_CONN_AUTODISCOVERY_FLAGS = 5
+INTERNET_OPTION_REFRESH = 37
+INTERNET_OPTION_SETTINGS_CHANGED = 39
+INTERNET_OPTION_PER_CONNECTION_OPTION = 75
+
+PROXY_TYPE_AUTO_PROXY_URL = 4
+INTERNET_PER_CONN_PROXY_SERVER = 2
+INTERNET_PER_CONN_PROXY_BYPASS = 3
+
+
+
+class INTERNET_PER_CONN_OPTION(Structure):
+    class Value(Union):
+        _fields_ = [
+            ('dwValue', DWORD),
+            ('pszValue', LPWSTR),
+            ('ftValue', FILETIME),
+        ]
+
+    _fields_ = [
+        ('dwOption', DWORD),
+        ('Value', Value),
+    ]
+
+
+class INTERNET_PER_CONN_OPTION_LIST(Structure):
+    _fields_ = [
+        ('dwSize', DWORD),
+        ('pszConnection', LPWSTR),
+        ('dwOptionCount', DWORD),
+        ('dwOptionError', DWORD),
+        ('pOptions', POINTER(INTERNET_PER_CONN_OPTION)),
+    ]
+
 
 from ss.core.pac import ProxyAutoConfig
 from ss.wrapper import onexit
-
-KEY = r"Software\Microsoft\Windows\CurrentVersion\Internet Settings"
 
 
 class Switcher(object):
@@ -20,53 +56,90 @@ class Switcher(object):
     "172.20.*;172.21.*;172.22.*;172.23.*;172.24.*;172.25.*;172.26.*;172.27.*;"\
     "172.28.*;172.29.*;172.30.*;172.31.*;172.32.*;192.168.*;<local>"
 
+    inte_set_opt = windll.wininet.InternetSetOptionW
+    inte_set_opt.argtypes = [HINTERNET, DWORD, LPVOID, DWORD]
+    inte_set_opt.restype  = BOOL
+
     def shift(self, mode, **config):
         if mode not in self.MODE:
             logging.warn("invalid proxy mode %s" % mode)
             return
-        hkey = winreg.OpenKey(winreg.HKEY_CURRENT_USER, 
-            KEY, 0, winreg.KEY_ALL_ACCESS)
+        List = INTERNET_PER_CONN_OPTION_LIST()
+        nSize = c_ulong(sizeof(INTERNET_PER_CONN_OPTION_LIST))
         try:
-            setex = winreg.SetValueEx
             if mode == self.MODE_OFF:
-                setex(hkey, "ProxyEnable", 0, winreg.REG_DWORD, 0)
-                setex(hkey, "ProxyServer", 0, winreg.REG_SZ, "")
-                setex(hkey, "AutoConfigURL", 0, winreg.REG_SZ, "")
+                logging.warn("set proxy mode to `off`")
+                option_count = 2
+                Option = (INTERNET_PER_CONN_OPTION * option_count)()
+                Option[0].dwOption = INTERNET_PER_CONN_FLAGS
+                Option[0].Value.dwValue = 1
+                Option[1].dwOption = INTERNET_PER_CONN_PROXY_SERVER
+                Option[1].Value.pszValue = None
             elif mode == self.MODE_PAC:
                 host = "http://%(local_address)s:%(local_port)d" % config
                 url = host + ProxyAutoConfig.URI
-                logging.info("pac url: %s" % url)
-                setex(hkey, "ProxyEnable", 0, winreg.REG_DWORD, 0)
-                setex(hkey, "ProxyServer", 0, winreg.REG_SZ, "")
-                setex(hkey, "AutoConfigURL", 0, winreg.REG_SZ, url)
-                setex(hkey, "ProxyOverride", 0, winreg.REG_SZ, self.PROXY_OVERRIDE) 
+                logging.info("set proxy mode to `pac`, pac url: %s" % url)
+                option_count = 3
+                Option = (INTERNET_PER_CONN_OPTION * option_count)()
+                Option[0].dwOption = INTERNET_PER_CONN_AUTOCONFIG_URL
+                Option[0].Value.pszValue = create_unicode_buffer(url)
+                Option[1].dwOption = INTERNET_PER_CONN_FLAGS
+                Option[1].Value.dwValue = PROXY_TYPE_AUTO_PROXY_URL
+                Option[2].dwOption = INTERNET_PER_CONN_PROXY_BYPASS
+                Option[2].Value.pszValue = create_unicode_buffer(self.PROXY_OVERRIDE)
             else:
-                setex(hkey, "ProxyEnable", 0, winreg.REG_DWORD, 1)
+                logging.warn("set proxy mode to `global`")
                 server = "%(local_address)s:%(local_port)d" % config
-                setex(hkey, "ProxyServer", 0, winreg.REG_SZ, server)
+                option_count = 2
+                Option = (INTERNET_PER_CONN_OPTION * option_count)()
+                Option[0].dwOption = INTERNET_PER_CONN_FLAGS
+                Option[0].Value.dwValue = 2
+                Option[1].dwOption = INTERNET_PER_CONN_PROXY_SERVER
+                Option[1].Value.pszValue = create_unicode_buffer(server)
+            List.dwSize = sizeof(INTERNET_PER_CONN_OPTION_LIST)
+            List.pszConnection = None
+            List.dwOptionCount = option_count
+            List.dwOptionError = 0
+            List.pOptions = Option
+            self.inte_set_opt(None, INTERNET_OPTION_PER_CONNECTION_OPTION,
+                byref(List), nSize)
+            self.inte_set_opt(None, INTERNET_OPTION_SETTINGS_CHANGED, None, 0)
+            self.inte_set_opt(None, INTERNET_OPTION_REFRESH, None, 0)
         except Exception as e:
             logging.warn("fail to shift proxy mode: %s" % e)
-        finally:
-            hkey.Close()
-        
+
+
     def update_pac(self, **config):
-        hkey = winreg.OpenKey(winreg.HKEY_CURRENT_USER, 
-            KEY, 0, winreg.KEY_ALL_ACCESS)
-        setex = winreg.SetValueEx
         try:
             host = "http://%(local_address)s:%(local_port)d" % config
             url = host + ProxyAutoConfig.URI
             logging.info("pac url: %s" % url)
-            setex(hkey, "AutoConfigURL", 0, winreg.REG_SZ, url)
+            List = INTERNET_PER_CONN_OPTION_LIST()
+            nSize = c_ulong(sizeof(INTERNET_PER_CONN_OPTION_LIST))
+            option_count = 3
+            Option = (INTERNET_PER_CONN_OPTION * option_count)()
+            Option[0].dwOption = INTERNET_PER_CONN_AUTOCONFIG_URL
+            Option[0].Value.pszValue = create_unicode_buffer(url)
+            Option[1].dwOption = INTERNET_PER_CONN_FLAGS
+            Option[1].Value.dwValue = PROXY_TYPE_AUTO_PROXY_URL
+            Option[2].dwOption = INTERNET_PER_CONN_PROXY_BYPASS
+            Option[2].Value.pszValue = create_unicode_buffer(self.PROXY_OVERRIDE)
+            List.dwSize = sizeof(INTERNET_PER_CONN_OPTION_LIST)
+            List.pszConnection = None
+            List.dwOptionCount = option_count
+            List.dwOptionError = 0
+            List.pOptions = Option
+            self.inte_set_opt(None, INTERNET_OPTION_PER_CONNECTION_OPTION, 
+                byref(List), nSize)
+            self.inte_set_opt(None, INTERNET_OPTION_SETTINGS_CHANGED, None, 0)
+            self.inte_set_opt(None, INTERNET_OPTION_REFRESH, None, 0)
         except Exception as e:
             logging.warn("fail to update pac url: %s" % e)
-        finally:
-            hkey.Close()
 
 @onexit
 def on_exit():
     logging.info("revert intenet settings.")
-    Switcher().shift(0)
+    Switcher().shift(Switcher.MODE_OFF)
 
 if __name__ == "__main__":
 
