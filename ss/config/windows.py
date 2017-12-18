@@ -110,6 +110,8 @@ class Switcher(object):
 
 
     def update_pac(self, **config):
+        if config.get("proxy_mode", "off") != "pac":
+            return
         try:
             host = "http://%(local_address)s:%(local_port)d" % config
             url = host + ProxyAutoConfig.URI
