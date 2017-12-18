@@ -89,7 +89,7 @@ class Switcher(object):
                 Option[2].Value.pszValue = create_unicode_buffer(self.PROXY_OVERRIDE)
             else:
                 logging.warn("set proxy mode to `global`")
-                server = "%(local_address)s:%(local_port)d" % config
+                server = "%(local_address)s:%(local_http_port)d" % config
                 option_count = 2
                 Option = (INTERNET_PER_CONN_OPTION * option_count)()
                 Option[0].dwOption = INTERNET_PER_CONN_FLAGS
