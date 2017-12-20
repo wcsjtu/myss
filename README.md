@@ -1,6 +1,6 @@
 # Myss
 
-[中文文档](https://github.com/wcsjtu/myss/README_CN.md)
+[中文文档](https://github.com/wcsjtu/myss/blob/master/README_CN.md)
 
 A derivative project from ss. Except `encrypt` module, all clowwindy's code are redesigned for complexity and effiency. Compared with origin shaodowsocks, the main improvement is:
 
