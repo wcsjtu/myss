@@ -149,7 +149,7 @@ class ConnHandler(object):
 
     def destroy(self):
         if self._closed:
-            logging.warn('already destroyed')
+            logging.info('already destroyed')
             return
         self.io_loop.remove(self._sock)
         self._sock.close()
@@ -292,7 +292,7 @@ class ListenHandler(object):
 
     def destroy(self):
         if self._closed:
-            logging.warn('already destroyed')
+            logging.info('already destroyed')
             return
         self.io_loop.remove(self._sock)
         self._sock.close()

@@ -160,7 +160,7 @@ class ConnHandler(BaseTCPHandler):
 
     def destroy(self):
         if self._status == self.STAGE_CLOSED:
-            logging.warning('already destroyed')
+            logging.info('already destroyed')
             return
         self._status = self.STAGE_CLOSED
         if self._sock:
