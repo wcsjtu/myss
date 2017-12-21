@@ -58,7 +58,8 @@ class Scheduler(sched.scheduler, threading.Thread):
         timefunc = self.timefunc
         pop = heapq.heappop
         while q:
-            time, priority, action, argument = checked_event = q[0]
+            checked_event = q[0]
+            time, priority, action, argument = checked_event[:4]
             now = timefunc()
             if now < time:
                 delayfunc(time - now)
