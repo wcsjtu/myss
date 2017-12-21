@@ -1,6 +1,6 @@
 # Myss
 
-[English Doc](https://github.com/wcsjtu/myss/README.md)
+[English Doc](https://github.com/wcsjtu/myss/blob/master/README.md)
 
 山寨版的 ss. 复用了它的部分代码, 重构了代码的主结构, 优化了部分设计, 同时增加了一些功能, 主要是以下几点
 
