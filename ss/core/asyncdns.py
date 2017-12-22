@@ -27,7 +27,7 @@ import json
 from ss import utils
 from ss.lru_cache import LRUCache
 from ss.ioloop import IOLoop
-
+from ss.settings import settings
 
 VALID_HOSTNAME = re.compile(br"(?!-)[A-Z\d-]{1,63}(?<!-)$", re.IGNORECASE)
 
@@ -159,9 +159,8 @@ class DNSParser(object):
 
 class DNSResolver(object):
 
-    def __init__(self, io_loop, **config):
+    def __init__(self, io_loop):
         self.io_loop = io_loop
-        self._config = config
         self._dns_parser = DNSParser()
         self._hosts = {}
         self._cbs = {}  # {hostname: {cb:None, cb1:None}}
@@ -360,7 +359,7 @@ class DNSResolver(object):
         self.on_exit()
 
     def last_cache(self):
-        dns_cache_file = self._config.get("dns_cache")
+        dns_cache_file = settings.get("dns_cache")
         if not dns_cache_file:  # local
             return
         path = os.path.expanduser(dns_cache_file)
@@ -381,7 +380,7 @@ class DNSResolver(object):
             return
 
     def on_exit(self):
-        path = self._config.get("dns_cache")
+        path = settings.get("dns_cache")
         if not path:    # local
             return
         path = os.path.expanduser(path)

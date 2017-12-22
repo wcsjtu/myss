@@ -6,6 +6,7 @@ import sys
 import os
 import json
 
+from ss import settings
 
 def to_bytes(s):
     if type(s) != bytes:
@@ -261,6 +262,8 @@ class Command(object):
             elif arg.startswith("-c"):
                 cfg = arg.strip("-c")
                 break
+        if cfg:
+            settings.settings.update({"config_file": cfg})
         return cfg
 
     def gen_argv(self, subcmd, cfg):
@@ -286,14 +289,14 @@ class Command(object):
         return d(self.parser.parse_args(args))
 
 
-def config():
-    from ss import settings
+def parse_cli(args=None):
+    
     cmd = Command()
-    cfg = cmd.parse()
+    cfg = cmd.parse(args)
     if "rhost" in cfg:
         cfg["server"], cfg["server_port"] =  cfg["rhost"]
         del cfg["rhost"]
-    settings.settings.__dict__ = cfg
+    settings.settings.update(cfg)
     config_logging(cfg)
     return cfg
 

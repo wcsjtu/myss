@@ -47,7 +47,7 @@ class INTERNET_PER_CONN_OPTION_LIST(Structure):
 
 from ss.core.pac import ProxyAutoConfig
 from ss.wrapper import onexit
-
+from ss.settings import settings
 
 class Switcher(object):
 
@@ -60,12 +60,13 @@ class Switcher(object):
     inte_set_opt.argtypes = [HINTERNET, DWORD, LPVOID, DWORD]
     inte_set_opt.restype  = BOOL
 
-    def shift(self, mode, **config):
+    def shift(self, mode):
         if mode not in self.MODE:
             logging.warn("invalid proxy mode %s" % mode)
             return
         List = INTERNET_PER_CONN_OPTION_LIST()
         nSize = c_ulong(sizeof(INTERNET_PER_CONN_OPTION_LIST))
+        config = settings.dict()
         try:
             if mode == self.MODE_OFF:
                 logging.warn("set proxy mode to `off`")
@@ -109,7 +110,8 @@ class Switcher(object):
             logging.warn("fail to shift proxy mode: %s" % e)
 
 
-    def update_pac(self, **config):
+    def update_pac(self):
+        config = settings.dict()
         if config.get("proxy_mode", "off") != "pac":
             return
         try:
@@ -142,18 +144,3 @@ class Switcher(object):
 def on_exit():
     logging.info("revert intenet settings.")
     Switcher().shift(Switcher.MODE_OFF)
-
-if __name__ == "__main__":
-
-    cfg = {
-        "rhost": "127.0.0.1:7410",
-        "local_address": "127.0.0.1",
-        "local_port": 1088,
-        "local_http_port": 1089,
-        "password": "123456",
-        "timeout": 300,
-        "method": "aes-256-cfb",
-        "fast_open": False
-    }
-    s = Switcher()
-    s.shift(0, **cfg)

@@ -7,17 +7,17 @@ import collections
 from ss import encrypt
 from ss import utils
 from ss.ioloop import IOLoop
-
+from ss.settings import settings
 from .base import BaseTCPHandler, \
     RemoteMixin, LocalMixin, HttpLocalMixin
 
     
 class ConnHandler(BaseTCPHandler):
 
-    def __init__(self, io_loop, conn, addr, tags, **options):
-        self._encryptor = encrypt.Encryptor(options['password'],
-                                            options['method'])
-        BaseTCPHandler.__init__(self, io_loop, conn, addr, tags, **options)
+    def __init__(self, io_loop, conn, addr, tags):
+        self._encryptor = encrypt.Encryptor(settings['password'],
+                                            settings['method'])
+        BaseTCPHandler.__init__(self, io_loop, conn, addr, tags)
 
     def handle_events(self, sock, fd, events):
         """
@@ -187,7 +187,7 @@ class ConnHandler(BaseTCPHandler):
         
 class ListenHandler(BaseTCPHandler):
 
-    def __init__(self, io_loop, sa, conn_hdcls, dns_resolver=None, **options):
+    def __init__(self, io_loop, sa, conn_hdcls, dns_resolver=None):
         """
         @params:
             io_loop, event loop
@@ -195,15 +195,14 @@ class ListenHandler(BaseTCPHandler):
             conn_hdcls, handler class which handle each accepted connection, 
                         maybe the mixin of `ConnHandler` and `RemoteMixin`
             dns_resolver, need for ssserver
-            options, items from config file
         """
-        super(ListenHandler, self).__init__(io_loop, None, sa, self.HDL_LISTEN, **options)
-        self._sock = self.bind(sa, **options)
+        super(ListenHandler, self).__init__(io_loop, None, sa, self.HDL_LISTEN)
+        self._sock = self.bind(sa)
         self._conn_hd_cls = conn_hdcls
         self._dns_resolver = dns_resolver
         self._keepalive = True
 
-    def bind(self, sa, **options):
+    def bind(self, sa):
         addrs = socket.getaddrinfo(sa[0], sa[1], 0, socket.SOCK_STREAM, socket.SOL_TCP)
         if not addrs:
             raise RuntimeError("can't get addrinfo for %s:%d" % tuple(sa))
@@ -212,7 +211,7 @@ class ListenHandler(BaseTCPHandler):
         server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         server_socket.bind(sa_)
         server_socket.setblocking(False)
-        if options.get("fast_open", False):
+        if settings.get("fast_open", False):
             try:
                 server_socket.setsockopt(socket.SOL_TCP, 23, 5)
             except socket.error:
@@ -232,7 +231,7 @@ class ListenHandler(BaseTCPHandler):
             logging.info("accept")
             conn, addr = self._sock.accept()
             handler = self._conn_hd_cls(self.io_loop, conn, addr, self._dns_resolver, 
-                                        self.HDL_NEGATIVE, **self._config)
+                                        self.HDL_NEGATIVE)
             handler.register()
         except (OSError, IOError) as e:
             err_no = utils.errno_from_exception(e)
@@ -250,19 +249,19 @@ class ListenHandler(BaseTCPHandler):
 
 class RemoteConnHandler(ConnHandler, RemoteMixin):
 
-    def __init__(self,  io_loop, conn, addr, dns_resolver, tags, **options):
-        ConnHandler.__init__(self, io_loop, conn, addr, tags, **options)
+    def __init__(self,  io_loop, conn, addr, dns_resolver, tags):
+        ConnHandler.__init__(self, io_loop, conn, addr, tags)
         RemoteMixin.__init__(self, dns_resolver)
 
 
 class LocalConnHandler(ConnHandler, LocalMixin):
-    def __init__(self,  io_loop, conn, addr, dns_resolver, tags, **options):
-        ConnHandler.__init__(self, io_loop, conn, addr, tags, **options)
+    def __init__(self,  io_loop, conn, addr, dns_resolver, tags):
+        ConnHandler.__init__(self, io_loop, conn, addr, tags)
         LocalMixin.__init__(self, dns_resolver)
 
 
 class HttpLocalConnHandler(ConnHandler, HttpLocalMixin):
 
-    def __init__(self,  io_loop, conn, addr, dns_resolver, tags, **options):
-        ConnHandler.__init__(self, io_loop, conn, addr, tags, **options)
+    def __init__(self,  io_loop, conn, addr, dns_resolver, tags):
+        ConnHandler.__init__(self, io_loop, conn, addr, tags)
         HttpLocalMixin.__init__(self, dns_resolver)

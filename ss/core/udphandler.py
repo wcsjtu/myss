@@ -71,7 +71,7 @@ from functools import partial
 from ss import encrypt, lru_cache, utils
 from ss.ioloop import IOLoop
 from ss.core.socks5 import parse_header
-
+from ss.settings import settings
 BUF_SIZE = 65536
 
 def client_key(source_addr, server_af):
@@ -82,20 +82,17 @@ class ConnHandler(object):
 
     SVR_TAG, LOC_TAG = 0, 1
 
-    def __init__(self, io_loop, addr, af, tags, peer_ref, **options):
+    def __init__(self, io_loop, addr, af, tags, peer_ref):
         self.io_loop = io_loop
         self._addr = addr
         self._tags = tags       # 0 mean server , 1 means local
-        self._config = options
         self._peer_ref = peer_ref
-        self._sock = self.create_sock(addr, af, **options)
-        self._password = options["password"]
-        self._method = options["method"]
+        self._sock = self.create_sock(addr, af)
         self._keepalive = False
         self._registered = False
         self._closed = False
 
-    def create_sock(self, sa, af, **options):
+    def create_sock(self, sa, af):
         sock = socket.socket(af, socket.SOCK_DGRAM)
         sock.setblocking(False)
         return sock
@@ -126,13 +123,13 @@ class ConnHandler(object):
                 # drop
                 return
             data = utils.pack_addr(r_addr[0]) + struct.pack('>H', r_addr[1]) + data
-            response = encrypt.encrypt_all(self._password, self._method, 1,
+            response = encrypt.encrypt_all(settings["password"], settings["method"], 1,
                                            data)
             if not response:
                 return
         else:
             #data = data[3:]
-            data = encrypt.encrypt_all(self._password, self._method, 0,
+            data = encrypt.encrypt_all(settings["password"], settings["method"], 0,
                                        data)
             response = data
             if not data:
@@ -170,22 +167,19 @@ class ListenHandler(object):
 
     SVR_TAG, LOC_TAG = 0, 1
 
-    def __init__(self, io_loop, addr, conn_hdcls, tags, dns_resolver=None, **options):
-        self._config = options
+    def __init__(self, io_loop, addr, conn_hdcls, tags, dns_resolver=None):
         self._addr = addr
         self.io_loop = io_loop
         self._conn_hd_cls = conn_hdcls
         self._keepalive = True
         self._registered = False
         self._closed = False
-        self._sock = self.bind(addr, **options)
+        self._sock = self.bind(addr)
         self._peer_ref_cache = {}       # {(ip, addr, af): handler_object}
         self._tags = tags
-        self._password = options["password"]
-        self._method = options["method"]
         self.dns_resolver = dns_resolver
 
-    def bind(self, sa, **options):
+    def bind(self, sa):
         addrs = socket.getaddrinfo(sa[0], sa[1], 0,
                                    socket.SOCK_DGRAM, socket.SOL_UDP)
         if len(addrs) == 0:
@@ -197,8 +191,8 @@ class ListenHandler(object):
         return sock
 
     def _get_a_server(self):
-        server = self._config['server']
-        server_port = self._config['server_port']
+        server = settings['server']
+        server_port = settings['server_port']
         if type(server_port) == list:
             server_port = random.choice(server_port)
         if type(server) == list:
@@ -215,7 +209,7 @@ class ListenHandler(object):
         else:
             peer_ref = weakref.ref(self)
             handler = self._conn_hd_cls(self.io_loop, addr, af, 
-                self._tags, peer_ref, **self._config)
+                self._tags, peer_ref)
             handler._r_addr = r_addr
             handler.register()
             self._peer_ref_cache[key] = weakref.ref(handler)
@@ -259,7 +253,8 @@ class ListenHandler(object):
             else:
                 data = data[3:]
         else:
-            data = encrypt.encrypt_all(self._password, self._method, 0, data)   # decrypt
+            data = encrypt.encrypt_all(settings["password"], 
+                settings["method"], 0, data)   # decrypt
             if not data:
                 logging.debug('UDP handle_server: data is empty after decrypt')
                 return
@@ -269,7 +264,8 @@ class ListenHandler(object):
         addrtype, dest_addr, dest_port, header_length = header_result
         if self._tags == self.LOC_TAG:
             dest_addr, dest_port = self._get_a_server()
-            data = encrypt.encrypt_all(self._password, self._method, 1, data)
+            data = encrypt.encrypt_all(settings["password"], 
+                settings["method"], 1, data)
         else:
             data = data[header_length:]
         if not data:

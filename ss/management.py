@@ -5,28 +5,29 @@ import os
 import signal
 from ss import utils, cli, wrapper
 from ss.config import Switcher
+from ss.settings import settings
 
-def set_proxy_mode(config):
-    modename = config["proxy_mode"]
+def set_proxy_mode():
+    modename = settings["proxy_mode"]
     if modename == "pac":
         from ss.watcher import Pac
-        Switcher().shift(Switcher.MODE_PAC, **config)
-        Pac.load(**config)
+        Switcher().shift(Switcher.MODE_PAC)
+        Pac.load()
     elif modename == "global":
-        Switcher().shift(Switcher.MODE_GLB, **config)
+        Switcher().shift(Switcher.MODE_GLB)
     elif modename == "off":
-        Switcher().shift(Switcher.MODE_OFF, **config)
+        Switcher().shift(Switcher.MODE_OFF)
 
 def run(io_loop=None):
-    config = cli.config()
+    cli.parse_cli()
     
     # if not io_loop:
     #     io_loop = IOLoop.current()
-    subcmd = config.get("subcmd")
+    subcmd = settings.get("subcmd")
     handlers = {"local": run_local, "server": run_server}
-    return handlers[subcmd](io_loop, config)
+    return handlers[subcmd](io_loop)
 
-def run_local(io_loop, config):
+def run_local(io_loop):
     from ss.core import tcphandler, udphandler
     from ss.core.asyncdns import DNSResolver
     from ss.ioloop import IOLoop
@@ -34,20 +35,20 @@ def run_local(io_loop, config):
     if not io_loop:
         io_loop = IOLoop.current()
     try:
-        sa = config['local_address'], config['local_port']
+        sa = settings['local_address'], settings['local_port']
         logging.info("starting local at %s:%d" % sa)
-        dns_resolver = DNSResolver(io_loop, **config)
+        dns_resolver = DNSResolver(io_loop)
         tcp_server = tcphandler.ListenHandler(io_loop, sa, 
-            tcphandler.LocalConnHandler, dns_resolver, **config)
+            tcphandler.LocalConnHandler, dns_resolver)
         udp_server = udphandler.ListenHandler(io_loop, sa, 
-            udphandler.ConnHandler, 1, dns_resolver, **config)  # 1 means local
+            udphandler.ConnHandler, 1, dns_resolver)  # 1 means local
         servers = [dns_resolver, tcp_server, udp_server]
 
-        if config.get("local_http_port"):
-            http_sa = config['local_address'], config['local_http_port']
+        if settings.get("local_http_port"):
+            http_sa = settings['local_address'], settings['local_http_port']
             logging.info("starting local http tunnel at %s:%d" % http_sa)
             http_tunnel = tcphandler.ListenHandler(io_loop, http_sa, 
-                tcphandler.HttpLocalConnHandler, dns_resolver, **config)
+                tcphandler.HttpLocalConnHandler, dns_resolver)
             servers.append(http_tunnel)
 
         for server in servers:
@@ -56,27 +57,26 @@ def run_local(io_loop, config):
             
         wrapper.register(['SIGQUIT', 'SIGINT', 'SIGTERM'], 
             wrapper.exec_exitfuncs)
-        schd = Scheduler(**config)
-        schd.register(Pac(15, 1, config))
+        schd = Scheduler()
         schd.start()
-        set_proxy_mode(config)
+        set_proxy_mode()
         io_loop.run()
     except Exception as e:
         logging.error(e, exc_info=True)
         sys.exit(1)
 
-def run_server(io_loop, config):
+def run_server(io_loop):
     from ss.core import tcphandler, udphandler
     from ss.core.asyncdns import DNSResolver
     from ss.ioloop import IOLoop
-    sa = config['server'], config['server_port']
+    sa = settings['server'], settings['server_port']
     logging.info("starting server at %s:%d" % sa)
 
-    dns_resolver = DNSResolver(io_loop, **config)
+    dns_resolver = DNSResolver(io_loop)
     tcp_server = tcphandler.ListenHandler(io_loop, sa, 
-        tcphandler.RemoteConnHandler, dns_resolver, **config)
+        tcphandler.RemoteConnHandler, dns_resolver)
     upd_server = udphandler.ListenHandler(io_loop, sa, 
-        udphandler.ConnHandler, 0, dns_resolver, **config)
+        udphandler.ConnHandler, 0, dns_resolver)
     servers = [tcp_server, upd_server, dns_resolver]
 
 
@@ -93,7 +93,7 @@ def run_server(io_loop, config):
             logging.error(e, exc_info=True)
             sys.exit(1)
 
-    workers = config.get("workers", 1)
+    workers = settings.get("workers", 1)
     if workers > 1:
         children = []
         def on_master_exit(s, _):
