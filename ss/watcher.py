@@ -8,6 +8,7 @@ import heapq
 import sys
 from ss.config import Switcher
 from ss.settings import settings
+from ss.wrapper import onstart
 
 def add_metaclass(metaclass):
     """Class decorator for creating a class with a metaclass."""
@@ -134,8 +135,7 @@ class Pac(Watcher):
     @classmethod
     def load(cls):
         from ss.core.pac import ProxyAutoConfig
-        pacfile = settings["pac"]
-        ProxyAutoConfig.load(pacfile)
+        ProxyAutoConfig.load()
         cls.LastRead = time.time()
         Switcher().update_pac()
 
@@ -150,7 +150,7 @@ class CoinfigFile(Watcher):
     last_read = time.time()
     not_support = [
                 "local_http_port", "local_port", 
-                "local_address", "server", "server_port"
+                "local_address", 
             ]
     NOT_SUPPORT_MSG = "`%s` changed! it wouldn't takce effect util you restart this service"
 
@@ -184,3 +184,9 @@ class CoinfigFile(Watcher):
         if not settings.get("config_file"):
             return None
         return self.inteval, self.priority, self.run, tuple()
+
+scheduler = Scheduler()
+
+@onstart
+def start_watcher():
+    scheduler.start()

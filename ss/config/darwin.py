@@ -13,7 +13,7 @@ class Switcher(object):
         if mode not in self.MODE:
             logging.warn("invalid proxy mode %s" % mode)
             return
-        eth = settings.get("ethname", "eth0")
+        eth = settings.get("eth", "eth0")
         if mode == self.MODE_OFF:
             cmd = "\n".join([
                 "networksetup -setwebproxystate %s off" % eth,
@@ -51,7 +51,7 @@ class Switcher(object):
         host = "http://%(local_address)s:%(local_port)d" % settings
         url = host + ProxyAutoConfig.URI
         logging.info("pac url: %s" % url)
-        ethname = settings.get("ethname", "eth0")
+        ethname = settings.get("eth", "eth0")
         cmd = "networksetup -setautoproxyurl %s %s" % (ethname, url)
         os.system(cmd)
 

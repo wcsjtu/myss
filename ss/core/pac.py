@@ -2,6 +2,7 @@
 import re
 import time
 import logging
+from ss.wrapper import onstart
 from ss.settings import settings
 
 class ProxyAutoConfig(object):
@@ -20,7 +21,8 @@ class ProxyAutoConfig(object):
         return s
 
     @classmethod
-    def load(cls, path):
+    def load(cls):
+        path = settings["pac"]
         with open(path, "r") as f:
             data = f.read()
         host = settings["local_address"]
@@ -33,6 +35,9 @@ class ProxyAutoConfig(object):
         cls.URI = "/pac?t=%d" % int(time.time())
         logging.info("reload pac file : %s" % path)
 
+@onstart
+def load_pac():
+    ProxyAutoConfig.load()
 
 if __name__ == "__main__":
 

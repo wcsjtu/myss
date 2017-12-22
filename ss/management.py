@@ -22,7 +22,6 @@ def run_local(io_loop):
     from ss.core import tcphandler, udphandler
     from ss.core.asyncdns import DNSResolver
     from ss.ioloop import IOLoop
-    from ss.watcher import Scheduler, Pac
     if not io_loop:
         io_loop = IOLoop.current()
     try:
@@ -48,9 +47,7 @@ def run_local(io_loop):
             
         wrapper.register(['SIGQUIT', 'SIGINT', 'SIGTERM'], 
             wrapper.exec_exitfuncs)
-        schd = Scheduler()
-        schd.start()
-        set_proxy_mode()
+        wrapper.exec_startfuncs(None, None)
         io_loop.run()
     except Exception as e:
         logging.error(e, exc_info=True)

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import platform
 import argparse
 import logging
 import sys
@@ -43,7 +43,8 @@ class Command(object):
               "rhost": "-H", 
               "pac": "--pac-file",
               "quiet": "--quiet", 
-              "verbose": "-v"
+              "verbose": "-v",
+              "eth": "--eth",
             }
 
     def __init__(self, parser=None):
@@ -153,7 +154,10 @@ class Command(object):
         self.add_arg(parser, dest="proxy_mode", default="off",
                     choices=["pac", "global", "off"],
                     help="system proxy mode"
-                     )
+                     ) 
+        if platform.system() =="Darwin":
+            self.add_arg(parser, dest="eth", default="eth0",
+                help="name of network interface which proxy set to")
         self.add_general_argument(self.local_parser)
 
     def _to_abspath(self, p):

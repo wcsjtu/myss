@@ -2,6 +2,7 @@
 
 import platform
 from ss.settings import settings
+from ss.wrapper import onstart
 SYS = platform.system()
 
 if SYS == "Windows":
@@ -11,7 +12,7 @@ elif SYS == "Linux":
 elif SYS == "Darwin":
     from .darwin import Switcher
 
-
+@onstart
 def set_proxy_mode():
     modename = settings["proxy_mode"]
     if modename == "pac":
