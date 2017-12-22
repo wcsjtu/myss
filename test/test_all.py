@@ -3,7 +3,8 @@ import os
 import sys
 import unittest
 import subprocess
-
+import platform
+import time
 PWD = os.path.dirname(__file__)
 
 import test_tcp, test_udp, test_http_tunnel
@@ -12,8 +13,9 @@ def start_services():
     def run(name):
         filename = "%s.py" % name
         filepath = os.path.join(PWD, filename)
-        service = subprocess.Popen("python " + filepath, shell=False)
+        service = subprocess.Popen(["python", filepath], shell=False, stdout=None)
         print("run service ss%s" % name)
+        time.sleep(2)
         return service
 
     server = run("ssserver")
@@ -44,8 +46,12 @@ class TestMyss(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
-        cls.SERVER.kill()
-        cls.LOCAL.kill()
+        if platform.system() == "Windows":
+            kill = lambda s: os.system("taskkill /F /T /PID %d" % s.pid)
+        else:
+            kill = lambda s: os.system("kill -s 9 %d" % s.pid)
+        kill(cls.SERVER)
+        kill(cls.LOCAL)
         print("all services stop!")
 
 

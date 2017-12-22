@@ -43,8 +43,9 @@ class Socks5(object):
             int(CONFIG["local_port"]))
         
     def close(self):
-        self.sock.close()
-        self.sock = None
+        if self.sock:
+            self.sock.close()
+            self.sock = None
     
     def connect(self, proxy_server=None):
         if self.sock:
