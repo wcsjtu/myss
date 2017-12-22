@@ -5,7 +5,7 @@ import threading
 import sched
 import logging
 import heapq
-
+import sys
 from ss.config import Switcher
 from ss.settings import settings
 
@@ -86,11 +86,14 @@ class Scheduler(sched.scheduler, threading.Thread):
         if not args:
             return False
         try:
+            
             interval, priority, func, _ = args
-            assert isinstance(interval, int)
-            assert isinstance(priority, int)
-            assert callable(func)
-        except (ValueError, AssertionError):
+            assert isinstance(interval, int), "inteval must be integer"
+            assert isinstance(priority, int), "priority must be integer"
+            assert callable(func), "func must callable!"
+            return True
+        except (ValueError, AssertionError) as e:
+            logging.warn(e)
             return False
 
     def add_to_loop(self):
@@ -99,8 +102,8 @@ class Scheduler(sched.scheduler, threading.Thread):
 
 class Register(type):
 
-    def __new__(cls, name, bases, attrs):
-        subcls = super(Register, cls).__new__(cls, name, bases, attrs)
+    def __new__(mcs, name, bases, attrs):
+        subcls = super(Register, mcs).__new__(mcs, name, bases, attrs)
         if name != "Watcher":
             Scheduler.watcher_list.append(subcls)
         return subcls
@@ -118,8 +121,8 @@ class Watcher(object):
 
 class Pac(Watcher):
 
-    LastRead = 0
-    inteval = 15
+    LastRead = time.time()
+    inteval = 25
     priority = 1
 
     def run(self):
@@ -137,4 +140,47 @@ class Pac(Watcher):
         Switcher().update_pac()
 
     def fmt(self):
+        return self.inteval, self.priority, self.run, tuple()
+
+
+class CoinfigFile(Watcher):
+
+    inteval = 30
+    priority = 1
+    last_read = time.time()
+    not_support = [
+                "local_http_port", "local_port", 
+                "local_address", "server", "server_port"
+            ]
+    NOT_SUPPORT_MSG = "`%s` changed! it wouldn't takce effect util you restart this service"
+
+    def run(self):
+        from ss.cli import parse_cli
+        path = settings["config_file"]
+        last_mod = os.path.getmtime(path)
+        if last_mod <= self.last_read:
+            return
+        old = settings.dict()
+        try:
+            parse_cli(sys.argv[1:])
+            logging.info("reload config file. \r\n%s" % settings)
+            self.last_read = time.time()
+            for key in self.not_support:
+                if settings[key] != old[key]:
+                    logging.warn(self.NOT_SUPPORT_MSG % key)
+            self.on_reload(old)
+        except SystemExit as e:
+            logging.error("config file error: %s" % e)
+        
+    def on_reload(self, old):
+        change = lambda key: old.get(key) != settings.get(key)
+        if change("pac"):
+            Pac.load()
+        if change("proxy_mode"):
+            from ss.config import set_proxy_mode
+            set_proxy_mode()
+
+    def fmt(self):
+        if not settings.get("config_file"):
+            return None
         return self.inteval, self.priority, self.run, tuple()

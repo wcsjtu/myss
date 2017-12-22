@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-
+import pprint
 from threading import RLock
 
 class Settings(object):
@@ -24,12 +24,18 @@ class Settings(object):
     def get(self, name, default=None):
         return self.__dict__.get(name, default)
 
+    def __contains__(self, name):
+        return name in self.__dict__
+
     def update(self, config):
         with self._LOCK:
             self.__dict__.update(config)
 
     def dict(self):
         return {k:v for k, v in self.__dict__.items()}
+
+    def __repr__(self):
+        return pprint.pformat(self.__dict__)
 
 settings = Settings()   
 

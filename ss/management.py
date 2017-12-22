@@ -4,19 +4,10 @@ import sys
 import os
 import signal
 from ss import utils, cli, wrapper
-from ss.config import Switcher
+from ss.config import set_proxy_mode
 from ss.settings import settings
 
-def set_proxy_mode():
-    modename = settings["proxy_mode"]
-    if modename == "pac":
-        from ss.watcher import Pac
-        Switcher().shift(Switcher.MODE_PAC)
-        Pac.load()
-    elif modename == "global":
-        Switcher().shift(Switcher.MODE_GLB)
-    elif modename == "off":
-        Switcher().shift(Switcher.MODE_OFF)
+
 
 def run(io_loop=None):
     cli.parse_cli()

@@ -66,7 +66,6 @@ class Switcher(object):
             return
         List = INTERNET_PER_CONN_OPTION_LIST()
         nSize = c_ulong(sizeof(INTERNET_PER_CONN_OPTION_LIST))
-        config = settings.dict()
         try:
             if mode == self.MODE_OFF:
                 logging.warn("set proxy mode to `off`")
@@ -77,7 +76,7 @@ class Switcher(object):
                 Option[1].dwOption = INTERNET_PER_CONN_PROXY_SERVER
                 Option[1].Value.pszValue = None
             elif mode == self.MODE_PAC:
-                host = "http://%(local_address)s:%(local_port)d" % config
+                host = "http://%(local_address)s:%(local_port)d" % settings
                 url = host + ProxyAutoConfig.URI
                 logging.info("set proxy mode to `pac`, pac url: %s" % url)
                 option_count = 3
@@ -90,7 +89,7 @@ class Switcher(object):
                 Option[2].Value.pszValue = create_unicode_buffer(self.PROXY_OVERRIDE)
             else:
                 logging.warn("set proxy mode to `global`")
-                server = "%(local_address)s:%(local_http_port)d" % config
+                server = "%(local_address)s:%(local_http_port)d" % settings
                 option_count = 2
                 Option = (INTERNET_PER_CONN_OPTION * option_count)()
                 Option[0].dwOption = INTERNET_PER_CONN_FLAGS
@@ -111,11 +110,10 @@ class Switcher(object):
 
 
     def update_pac(self):
-        config = settings.dict()
-        if config.get("proxy_mode", "off") != "pac":
+        if settings.get("proxy_mode", "off") != "pac":
             return
         try:
-            host = "http://%(local_address)s:%(local_port)d" % config
+            host = "http://%(local_address)s:%(local_port)d" % settings
             url = host + ProxyAutoConfig.URI
             logging.info("pac url: %s" % url)
             List = INTERNET_PER_CONN_OPTION_LIST()

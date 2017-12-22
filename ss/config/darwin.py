@@ -3,17 +3,17 @@ import logging
 import os
 from ss.core.pac import ProxyAutoConfig
 from ss.wrapper import onexit
-
+from ss.settings import settings
 
 class Switcher(object):
 
     MODE = (MODE_OFF, MODE_PAC, MODE_GLB) = (0, 1, 2)
 
-    def shift(self, mode, **config):
+    def shift(self, mode):
         if mode not in self.MODE:
             logging.warn("invalid proxy mode %s" % mode)
             return
-        eth = config.get("ethname", "eth0")
+        eth = settings.get("ethname", "eth0")
         if mode == self.MODE_OFF:
             cmd = "\n".join([
                 "networksetup -setwebproxystate %s off" % eth,
@@ -23,7 +23,7 @@ class Switcher(object):
             ])
             logging.warn("set proxy mode to `off`")
         elif mode == self.MODE_PAC:
-            host = "http://%(local_address)s:%(local_port)d" % config
+            host = "http://%(local_address)s:%(local_port)d" % settings
             url = host + ProxyAutoConfig.URI
             logging.info("set proxy mode to `pac`, pac url: %s" % url)
             cmd = "\n".join([
@@ -35,7 +35,7 @@ class Switcher(object):
         else:
             logging.warn("set proxy mode to `global`")
             socks5 = "networksetup -setsocksfirewallproxy %s %s %d" % (
-                eth, config["local_address"], config["local_port"]
+                eth, settings["local_address"], settings["local_port"]
             )
             cmd = "\n".join([
                 socks5, 
@@ -45,13 +45,13 @@ class Switcher(object):
             ])
         os.system(cmd)
 
-    def update_pac(self, **config):
-        if config.get("proxy_mode", "off") != "pac":
+    def update_pac(self):
+        if settings.get("proxy_mode", "off") != "pac":
             return
-        host = "http://%(local_address)s:%(local_port)d" % config
+        host = "http://%(local_address)s:%(local_port)d" % settings
         url = host + ProxyAutoConfig.URI
         logging.info("pac url: %s" % url)
-        ethname = config.get("ethname", "eth0")
+        ethname = settings.get("ethname", "eth0")
         cmd = "networksetup -setautoproxyurl %s %s" % (ethname, url)
         os.system(cmd)
 
@@ -60,17 +60,3 @@ def on_exit():
     logging.info("revert intenet settings.")
     Switcher().shift(Switcher.MODE_OFF)
 
-if __name__ == "__main__":
-
-    cfg = {
-        "rhost": "127.0.0.1:7410",
-        "local_address": "127.0.0.1",
-        "local_port": 1088,
-        "local_http_port": 1089,
-        "password": "123456",
-        "timeout": 300,
-        "method": "aes-256-cfb",
-        "fast_open": False
-    }
-    s = Switcher()
-    s.shift(0, **cfg)

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import platform
-
+from ss.settings import settings
 SYS = platform.system()
 
 if SYS == "Windows":
@@ -10,3 +10,13 @@ elif SYS == "Linux":
      from .linux import Switcher
 elif SYS == "Darwin":
     from .darwin import Switcher
+
+
+def set_proxy_mode():
+    modename = settings["proxy_mode"]
+    if modename == "pac":
+        Switcher().shift(Switcher.MODE_PAC)
+    elif modename == "global":
+        Switcher().shift(Switcher.MODE_GLB)
+    elif modename == "off":
+        Switcher().shift(Switcher.MODE_OFF)
