@@ -1,4 +1,5 @@
 # Myss
+![Build Status](https://travis-ci.org/wcsjtu/myss.svg?branch=master)
 
 [English Doc](https://github.com/wcsjtu/myss/blob/master/README.md)
 
