@@ -6,7 +6,7 @@ import signal
 from ss import utils, cli, wrapper
 from ss.config import set_proxy_mode
 from ss.settings import settings
-
+from ss import watcher
 
 
 def run(io_loop=None):
