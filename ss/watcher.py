@@ -36,9 +36,9 @@ class Scheduler(sched.scheduler, threading.Thread):
         self.setDaemon(True)
         self.is_running = False
         self.intval_map = dict()
-        self.add_to_loop()
-
+        
     def run(self):
+        self.add_to_loop()
         logging.info("start watcher thread!")
         self.is_running = True
         q = self._queue
