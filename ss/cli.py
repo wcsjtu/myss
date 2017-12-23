@@ -314,7 +314,6 @@ def config_logging(cfg):
         else logging.INFO
     if cfg.get("verbose"):
         kwargs["level"] = logging.DEBUG
-    if kwargs.get("log_file"):
-        kwargs["filename"] = kwargs["log_file"]
-
+    if cfg.get("log_file"):
+        kwargs["filename"] = cfg["log_file"]
     logging.basicConfig(**kwargs)
