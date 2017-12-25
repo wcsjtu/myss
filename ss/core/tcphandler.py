@@ -164,7 +164,7 @@ class ConnHandler(BaseTCPHandler):
             return
         self._status = self.STAGE_CLOSED
         if self._sock:
-            logging.info("   socket connected to %s:%d closed!" % self._addr)
+            logging.debug("   socket connected to %s:%d closed!" % self._addr)
             self.io_loop.remove(self._sock)
             self._sock.close()
             self._sock = None
@@ -173,7 +173,7 @@ class ConnHandler(BaseTCPHandler):
         if self.peer:
             op_sock = self.peer._sock
             if op_sock:
-                logging.info("(R)socket connected to %s:%d closed!" % self.peer._addr)
+                logging.debug("(R)socket connected to %s:%d closed!" % self.peer._addr)
                 self.io_loop.remove(op_sock)
                 op_sock.close()
                 if self.peer:
