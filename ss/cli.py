@@ -39,7 +39,7 @@ class Command(object):
               "manager_address": "--manager-address",
               "local_address": "-s", 
               "local_port": "-P", 
-              "local_http_port": "-http-port", 
+              "local_http_port": "--http-port", 
               "rhost": "-H", 
               "pac": "--pac-file",
               "quiet": "--quiet", 
@@ -66,7 +66,7 @@ class Command(object):
 
     def add_general_argument(self, parser):
         parser = parser.add_argument_group("General options")
-        self.add_arg(parser, dest="verbose", help="verbose mode")
+        self.add_arg(parser, dest="verbose", action='store_true', help="verbose mode")
 
         self.add_arg(parser, help="command for daemon mode", dest="action",
                      choices=["start", "stop", "restart"])
