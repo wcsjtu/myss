@@ -228,8 +228,8 @@ class ListenHandler(BaseTCPHandler):
             self.destroy()
             raise Exception('server_socket error')
         try:
-            logging.info("accept")
             conn, addr = self._sock.accept()
+            logging.debug("accept %s:%d" % addr)
             handler = self._conn_hd_cls(self.io_loop, conn, addr, self._dns_resolver, 
                                         self.HDL_NEGATIVE)
             handler.register()
