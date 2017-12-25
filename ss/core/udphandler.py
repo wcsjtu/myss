@@ -117,6 +117,7 @@ class ConnHandler(object):
         if not data:
             logging.debug('UDP handle_client: data is empty')
             return
+        logging.debug("UDP: recv {:6d} B from {:15s}:{:5d} ".format(len(data), *r_addr))
         if self._tags == self.SVR_TAG:
             addrlen = len(r_addr[0])
             if addrlen > 255:
@@ -141,6 +142,9 @@ class ConnHandler(object):
             response = b'\x00\x00\x00' + response
         if self.peer_sock:
             self.peer_sock.sendto(response, self._r_addr)
+            logging.debug(
+                "UDP: send {:6d} B to   {:15s}:{:5d} ".format(len(response), *self._r_addr)
+                )
         else:
             pass    # drop 
 

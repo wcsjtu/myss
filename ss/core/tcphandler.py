@@ -119,7 +119,7 @@ class ConnHandler(BaseTCPHandler):
             self._wbuf_size -= num_bytes
         else:
             peer_handler._rbuf_size -= num_bytes
-        logging.info("send {:6d} B to   {:15s}:{:5d} ".format(num_bytes, *self._addr))
+        logging.debug("TCP: send {:6d} B to   {:15s}:{:5d} ".format(num_bytes, *self._addr))
         return num_bytes
 
     def on_read(self):
@@ -139,7 +139,7 @@ class ConnHandler(BaseTCPHandler):
         self._read_buf.append(data)
         date_length = len(data)
         self._rbuf_size += date_length
-        logging.info("recv {:6d} B from {:15s}:{:5d} ".format(date_length, *self._addr))
+        logging.debug("TCP: recv {:6d} B from {:15s}:{:5d} ".format(date_length, *self._addr))
         if self._rbuf_size >= self.MAX_BUF_SIZE:
             logging.warn("connection: %s:%d read buffer over flow!" % self._addr)
             self.destroy()
