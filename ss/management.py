@@ -7,7 +7,9 @@ from ss import utils, cli, wrapper
 from ss.config import set_proxy_mode
 from ss.settings import settings
 from ss import watcher
-
+from ss.core import tcphandler, udphandler
+from ss.core.asyncdns import DNSResolver
+from ss.ioloop import IOLoop
 
 def run(io_loop=None):
     cli.parse_cli()
@@ -19,9 +21,7 @@ def run(io_loop=None):
     return handlers[subcmd](io_loop)
 
 def run_local(io_loop):
-    from ss.core import tcphandler, udphandler
-    from ss.core.asyncdns import DNSResolver
-    from ss.ioloop import IOLoop
+    
     if not io_loop:
         io_loop = IOLoop.current()
     try:
@@ -54,9 +54,6 @@ def run_local(io_loop):
         sys.exit(1)
 
 def run_server(io_loop):
-    from ss.core import tcphandler, udphandler
-    from ss.core.asyncdns import DNSResolver
-    from ss.ioloop import IOLoop
     sa = settings['server'], settings['server_port']
     logging.info("starting server at %s:%d" % sa)
 
