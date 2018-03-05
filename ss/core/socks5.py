@@ -42,6 +42,7 @@ import struct
 import logging
 import os
 from ss import utils
+from ss.settings import settings
 
 ATYP_IPV4 = 0x01
 ATYP_HOST = 0x03
@@ -92,10 +93,30 @@ def parse_header(data):
         return None
     return addrtype, utils.to_bytes(dest_addr), dest_port, header_length
 
+def _satyp():
+    addr = settings["local_address"]
+    port = settings["local_port"]
+    family = utils.is_ip(addr)
+    pk = struct.pack
+    if family == socket.AF_INET:
+        t, s = ATYP_IPV4, utils.inet_pton(family, addr)
+    elif family == socket.AF_INET6:
+        t, s = ATYP_IPV6, utils.inet_ntop(family, addr)
+    else:
+        addr_len = pk("!B", len(addr))
+        t, s = ATYP_HOST, addr_len + utils.to_bytes(addr)
+    return pk("!B", t), s, pk("!H", port)
+
+_SATYPE, _SADDR, _SPORT = (None, )*3
 
 def gen_ack():
-    r = b'\x05\x00\x00\x01\x00\x00\x00\x00\x10\x10'
-    return r, len(r)
+    global _SATYPE, _SADDR, _SPORT
+    if not _SATYPE:
+        _SATYPE, _SADDR, _SPORT = _satyp()
+    seq = [b'\x05\x00\x00', _SATYPE, _SADDR, _SPORT]
+    ack = b''.join(seq)
+    ack_len = len(ack)
+    return ack, ack_len
 
 def gen_nego():
     r = b'\x05\00'
