@@ -132,6 +132,11 @@ class SelectLoop(object):
         pass
 
 
+class _Current(object):
+    def __init__(self):
+        self._instance=None
+
+
 class IOLoop(object):
 
     _EPOLLIN = 0x001
@@ -150,7 +155,7 @@ class IOLoop(object):
 
     _instance_lock = threading.Lock()
 
-    _current = threading.local()
+    _current = _Current()
 
     def __init__(self):
         if hasattr(select, 'epoll'):
@@ -219,6 +224,7 @@ class IOLoop(object):
         self._stopping = True
 
     def run(self):
+        self._stopping = False
         events = []
         while not self._stopping:
             asap = False
@@ -251,6 +257,7 @@ class IOLoop(object):
             if asap or now - self._last_time >= TIMEOUT_PRECISION:
                 self._timeout.cleanup()
                 self._last_time = now
+        print("proxy service stopped!!!")
 
     def __del__(self):
         self._impl.close()
