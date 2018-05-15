@@ -3,7 +3,7 @@ import sys
 import functools
 import logging
 import signal
-
+import threading
 onexit_callbacks = []
 
 onstart_callbacks = []
@@ -29,6 +29,9 @@ def exec_startfuncs(s, _):
     logging.info('all on start callbacks exec successfully')
 
 def register(signals, func):
+    if not isinstance(threading.current_thread(), threading._MainThread):
+        logging.warn("signal only works in main thread, skip register signal")
+        return
     for s in signals:
         sign = getattr(signal, s, None)
         if sign:
