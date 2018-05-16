@@ -1,11 +1,18 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, division, print_function, \
     with_statement
-
+import sys
 import socket
 import struct
 import logging
 import os
+
+PY2 = sys.version_info[0] == 2
+if PY2:
+    text_string = unicode
+else:
+    text_string = str
+
 
 def compat_ord(s):
     if type(s) == int:
@@ -26,18 +33,11 @@ chr = compat_chr
 
 
 def to_bytes(s):
-    if bytes != str:
-        if type(s) == str:
-            return s.encode('utf-8')
-    return s
+    return s.encode("utf8") if type(s) is text_string else s
 
 
 def to_str(s):
-    if bytes != str:
-        if type(s) == bytes:
-            return s.decode('utf-8')
-    return s
-
+    return s.decode("utf8") if type(s) is bytes else s
 
 def inet_ntop(family, ipstr):
     if family == socket.AF_INET:
