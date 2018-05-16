@@ -190,6 +190,7 @@ class ListenHandler(object):
             raise Exception("can't get addrinfo for %s:%d" % tuple(sa))
         af, socktype, proto, canonname, sa = addrs[0]
         sock = socket.socket(af, socktype, proto)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.bind(tuple(sa))
         sock.setblocking(False)
         return sock
