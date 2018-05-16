@@ -189,4 +189,5 @@ scheduler = Scheduler()
 
 @onstart
 def start_watcher():
-    scheduler.start()
+    if not scheduler.is_running:
+        scheduler.start()
