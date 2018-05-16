@@ -9,6 +9,7 @@ from functools import partial
 from threading import Thread
 from ss.settings import settings
 from ss import utils
+from ss.encrypt import CIPHERS_TO_TEST
 
 if getattr(sys, 'frozen', None):
     basedir = sys._MEIPASS
@@ -167,11 +168,6 @@ class Application(tk.Tk):
         self.pop_menu_log.add_command(label="清除", command=partial(clear_log, self.textarea_log))
         self.textarea_log.bind("<Button-3><ButtonRelease-3>", self.on_rclick_log)
         
-    def all_encrypt_method(self):
-        return [
-            "aes-256-cfb", "aes-128-cfb"
-        ]
-
     def create_widgets(self):
         self.var_conf = tk.StringVar(self.conframe)
         self.new_conf_row(
@@ -200,7 +196,7 @@ class Application(tk.Tk):
         self.var_method = tk.StringVar(self.conframe)
         self.new_conf_row(
             "method", ttk.Combobox, '加密方式', 
-            self.var_method, values=self.all_encrypt_method(),
+            self.var_method, values=CIPHERS_TO_TEST,
             state="readonly")
 
         self.var_timeout = tk.IntVar(self.conframe, value=300)
