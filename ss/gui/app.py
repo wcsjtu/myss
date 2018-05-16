@@ -2,6 +2,7 @@
 import json
 import os
 import sys
+import base64
 import tkinter as tk
 from tkinter import ttk
 from functools import partial
@@ -17,11 +18,15 @@ else:
 conf_dir = os.path.join(basedir, "conf")
 
 PY2 = sys.version_info[0] == 2
+DEFAULT_PAC = "../config/pac"
 
 if PY2:
+    from urllib import urlopen, urlencode
     import tkMessageBox as messagebox
 else:
     from tkinter import messagebox
+    from urllib.request import urlopen
+    from urllib.parse import urlencode
 
 class Row(object):
 
@@ -79,7 +84,7 @@ class StdoutRedirector(object):
     def raw_write(self, d):
         self.current_size += len(d)
         self.buffer.insert(tk.END, d)
-
+        self.buffer.see(tk.END)
 
 
 def hello():
@@ -90,9 +95,15 @@ def clear_log(textarea):
     logfile = settings.get("log_file") or os.path.join(basedir, "ss.log")
     log = textarea.get("1.0", tk.END)
     log = utils.to_bytes(log)
-    with open(logfile, "a") as f:
+    with open(logfile, "ab") as f:
         f.write(log)
     textarea.delete("1.0", tk.END)
+
+def get_pacfile():
+    default = os.path.join(basedir, DEFAULT_PAC)
+    default = os.path.abspath(default)
+    path = settings.get("pac", default)
+    return os.path.abspath(path)
 
 class Application(tk.Tk):
 
@@ -109,23 +120,29 @@ class Application(tk.Tk):
         self.add_save_btn()
         self.add_log_area()        
         self.add_log_ctx_menu()
+        self.add_menu()
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.iconbitmap(os.path.join(basedir, "res/favicon.ico"))
 
-    def new_conf_row(self, name, type, label_text, bindvar, values=[], event=None):
+    def new_conf_row(self, name, type, label_text, bindvar, **kw):
+
         label = ttk.Label(self.conframe,
             text=label_text, font=('Arial', 12),
             width=15,
         )
         if type is ttk.Combobox:
+            optional = {"values": kw.get("values", [])}
+            if "state" in kw:
+                optional["state"] = kw["state"]
             widget = type(self.conframe,
-                width=21, state="readonly",
-                textvariable=bindvar, values=values
+                width=21,textvariable=bindvar,
+                **optional
             )
         else:
             widget = type(self.conframe, width=23, textvariable=bindvar)
         
-        if event:
+        if kw.get("event"):
+            event = kw["event"]
             widget.bind(event.event, event.callback)
 
         row = Row(label, widget, bindvar)
@@ -159,7 +176,7 @@ class Application(tk.Tk):
         self.var_conf = tk.StringVar(self.conframe)
         self.new_conf_row(
             "conf", ttk.Combobox, '选择配置文件', 
-            self.var_conf, self.get_all_conf(),
+            self.var_conf, values=self.get_all_conf(),
             event=Event("<<ComboboxSelected>>", self.on_select_conf))
         
         self.var_rhost = tk.StringVar(self.conframe)
@@ -183,7 +200,8 @@ class Application(tk.Tk):
         self.var_method = tk.StringVar(self.conframe)
         self.new_conf_row(
             "method", ttk.Combobox, '加密方式', 
-            self.var_method, self.all_encrypt_method())
+            self.var_method, values=self.all_encrypt_method(),
+            state="readonly")
 
         self.var_timeout = tk.IntVar(self.conframe, value=300)
         self.new_conf_row("timeout", ttk.Entry, '超时(秒)', self.var_timeout)
@@ -191,7 +209,7 @@ class Application(tk.Tk):
         self.var_proxy_mode = tk.StringVar(self.conframe, value="off")
         self.new_conf_row(
             "proxy_mode", ttk.Combobox, "代理模式", self.var_proxy_mode,
-            values=["pac", "global", "off"],
+            values=["pac", "global", "off"], state="readonly",
             event=Event("<<ComboboxSelected>>", self.on_select_proxy_mode)
         )
 
@@ -207,6 +225,19 @@ class Application(tk.Tk):
 
         self.btn_save.grid(row=self.form.length, column=0, pady=25)
         self.btn_startop.grid(row=self.form.length, column=1, pady=25)
+
+    def add_menu(self):
+        menubar = tk.Menu(self)
+        self.config(menu=menubar)
+        menu_pacfile = tk.Menu(menubar, tearoff=0, font=('Arial', 10), borderwidth=2, )
+        menubar.add_cascade(label="PAC", menu=menu_pacfile)
+        menu_pacfile.add_command(label="编辑", command=self.open_pac)
+        menu_pacfile.add_command(label="重载", command=self.reload_pac)
+
+        menu_share = tk.Menu(menubar, tearoff=0, font=('Arial', 10), borderwidth=2, )
+        menubar.add_cascade(label="分享", menu=menu_share)
+        menu_share.add_command(label="显示二维码", command=self.show_qrcode)
+        menu_share.add_command(label="复制到剪切板", command=self.copy_conf)
 
     def place_widget(self):
         for i, row in enumerate(self.form.rows):
@@ -268,7 +299,7 @@ class Application(tk.Tk):
             rhost = raw_conf.pop("rhost")
             rport = raw_conf.pop("rport")
             raw_conf["rhost"] = "%s:%d" % (rhost, rport)
-            with open(self.confile(confname), "wb") as f:
+            with open(self.confile(confname), "w") as f:
                 json.dump(raw_conf, f)
             if show:
                 messagebox.showinfo("通知", "保存成功")
@@ -354,6 +385,143 @@ class Application(tk.Tk):
         except Exception as err:
             messagebox.showerror("警告", err)
             return
+
+    def open_pac(self):
+        pac_dialog = PacDialog()
+        pacfile = get_pacfile()
+        with open(pacfile, "r") as f:
+            pac = f.read()
+        pac_dialog.textarea_log.insert(tk.END, pac)
+        pac_dialog.textarea_log.edit_modified(False)
+        self.grab_set()             # make master be unclickable
+        self.wait_window(pac_dialog)
+        self.grab_release()
+
+    def reload_pac(self):
+        from ss.watcher import Pac
+        if self._proxy_started:
+            Pac.load()
+            messagebox.showinfo("通知", "pac文件重新加载完成")
+        else:
+            messagebox.showerror("警告", "代理运行时才能重载")
+
+    def show_qrcode(self):
+        # conf = self.get_cfg_form()
+        # qrdialog = QRcodeDialog(conf)
+        # self.grab_set()                 # make master be unclickable
+        # self.wait_window(qrdialog)
+        # self.grab_release()
+        # TODO
+        messagebox.showinfo("通知", "敬请期待")
+
+    def copy_conf(self):
+        conf = self.get_cfg_form()
+        url = QRcodeDialog.ssurl(conf)
+        self.clipboard_clear()
+        self.clipboard_append(url)
+        self.update()
+        messagebox.showinfo("通知", "URL已复制到剪切板")
+    
+
+class PacDialog(tk.Toplevel):
+
+    def __init__(self):
+        tk.Toplevel.__init__(self)
+        self.title("编辑pac文件")
+        self.setup()
+        self.iconbitmap(os.path.join(basedir, "res/favicon.ico"))
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
+        self._saved = False
+
+    def setup(self):
+        menubar = tk.Menu(self)
+        self.config(menu=menubar)
+        menubar.add_command(label="保存", command=self.save_pac)
+
+        scrollbar = tk.Scrollbar(self)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        ta = tk.Text(self, width=80, font=("Times New Roman", 11))
+        ta["yscrollcommand"] = scrollbar.set
+        ta.pack()
+        scrollbar.config(command=ta.yview)
+        self.textarea_log = ta
+        self.textarea_log.bind_class("Text", "<Control-a>", self.on_ctrl_a)
+        self.textarea_log.bind_class("Text", "<Control-s>", self.save_pac)
+        self.textarea_log.bind_class("Text", "<Control-z>", self.undo_edit)
+        self.textarea_log.bind_class("Text", "<Control-y>", self.redo_edit)
+
+    def undo_edit(self, *v):
+        try:
+            self.textarea_log.edit_undo()
+        except:
+            pass
+
+    def redo_edit(self, *v):
+        try:
+            self.textarea_log.edit_redo()
+        except:
+            pass
+
+    def on_ctrl_a(self, *v):
+        self.textarea_log.focus_force()
+        self.textarea_log.tag_add("sel","1.0","end")
+
+    def save_pac(self, *v):
+        pacfile = get_pacfile()
+        text = self.textarea_log.get("1.0", tk.END)
+        with open(pacfile, "w") as f:
+            f.write(text)
+
+    def on_close(self):
+        if not self._saved and self.textarea_log.edit_modified():
+            if messagebox.askokcancel("警告", "内容没有保存, 确定要退出？"):
+                self.destroy()
+        else:
+            self.destroy()
+
+class QRcodeDialog(tk.Toplevel):
+    def __init__(self, conf):
+        self.ssconf = conf
+        tk.Toplevel.__init__(self)
+        self.title("%s的二维码" % conf["conf"])
+        self.iconbitmap(os.path.join(basedir, "res/favicon.ico"))
+        self.setup()
+        
+
+    def setup(self):
+        self.cv = tk.Canvas(self, bg='white')
+        self.cv.pack()
+        ok, photo = self.generator(self.ssconf)
+        if not ok:
+            messagebox.showerror("警告", photo)
+        else:
+            self.cv.create_image(250, 250, image=photo)
+
+    @classmethod
+    def ssurl(cls, conf):
+        ss = "%(method)s-auth:%(password)s@%(rhost)s:%(rport)s" % conf
+        data = b"ss://" + base64.encodestring(utils.to_bytes(ss))
+        return data
+
+    @classmethod
+    def generator(cls, conf):
+        url = "https://chart.googleapis.com/chart"
+        data = cls.ssurl(conf)
+        payload = {
+            "cht": "qr",
+            "chs": "200x200",
+            "chl": data,
+        }
+        url = url + "?" + urlencode(payload)
+        print(url)
+        resp = urlopen(url)
+        if resp.code != 200:
+            return False, resp.reason
+        image = resp.read()
+        image_b64 = base64.encodestring(image)
+        photo = tk.PhotoImage(data=image_b64)
+        return True, photo
+
 
 def set_stdout(text_area):
     import logging
