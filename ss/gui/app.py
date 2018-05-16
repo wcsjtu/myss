@@ -6,6 +6,8 @@ import tkinter as tk
 from tkinter import ttk
 from functools import partial
 from threading import Thread
+from ss.settings import settings
+from ss import utils
 
 if getattr(sys, 'frozen', None):
     basedir = sys._MEIPASS
@@ -60,18 +62,37 @@ class Form(object):
 
 
 class StdoutRedirector(object):
-    def __init__(self, text_area):
+    def __init__(self, text_area, maxsize=10*1024**2):
         self.buffer = text_area
+        self.maxsize = maxsize
+        self.current_size = 0
 
     def write(self, d):
+        self.raw_write(d)
+        if self.current_size >= self.maxsize:
+            self.raw_flush()
+            self.raw_write("日志大小超过上限, 已持久化到硬盘!")
+
+    def raw_flush(self):
+        return clear_log(self.buffer)
+
+    def raw_write(self, d):
+        self.current_size += len(d)
         self.buffer.insert(tk.END, d)
+
 
 
 def hello():
     print("使用myss，发现更大的世界！")
     print("请在选择配置文件后, 点击启动代理。如果没有配置文件, 请手动填写各个输入框")
     
-
+def clear_log(textarea):
+    logfile = settings.get("log_file") or os.path.join(basedir, "ss.log")
+    log = textarea.get("1.0", tk.END)
+    log = utils.to_bytes(log)
+    with open(logfile, "a") as f:
+        f.write(log)
+    textarea.delete("1.0", tk.END)
 
 class Application(tk.Tk):
 
@@ -87,7 +108,7 @@ class Application(tk.Tk):
         self.place_widget()
         self.add_save_btn()
         self.add_log_area()        
-
+        self.add_log_ctx_menu()
         self.protocol("WM_DELETE_WINDOW", self.on_close)
         self.iconbitmap(os.path.join(basedir, "res/favicon.ico"))
 
@@ -122,7 +143,12 @@ class Application(tk.Tk):
         ta = tk.Text(self.logframe, width=80, font=("Times New Roman", 11))
         ta["yscrollcommand"] = scrollbar.set
         ta.pack()
-        self.text_area = ta
+        self.textarea_log = ta
+
+    def add_log_ctx_menu(self):
+        self.pop_menu_log = tk.Menu(self.textarea_log, tearoff=0)
+        self.pop_menu_log.add_command(label="清除", command=partial(clear_log, self.textarea_log))
+        self.textarea_log.bind("<Button-3><ButtonRelease-3>", self.on_rclick_log)
         
     def all_encrypt_method(self):
         return [
@@ -197,6 +223,12 @@ class Application(tk.Tk):
             return []
         return os.listdir(conf_dir)
 
+    def on_rclick_log(self, event):
+        try:
+            self.pop_menu_log.tk_popup(event.x_root, event.y_root, 0)
+        finally:
+            self.pop_menu_log.grab_release()
+
     def on_select_proxy_mode(self, *v):
         proxy_mode = self.form.get_bindvar_by_name("proxy_mode").get()
         if proxy_mode == self._prev_proxy_mode:
@@ -205,7 +237,7 @@ class Application(tk.Tk):
         if self._proxy_started:
             if messagebox.askokcancel("警告", msg):
                 from ss.config import set_proxy_mode
-                from ss.settings import settings
+                
                 settings["proxy_mode"] = proxy_mode
                 set_proxy_mode()
                 self._prev_proxy_mode = proxy_mode
@@ -250,12 +282,16 @@ class Application(tk.Tk):
         from ss.wrapper import onexit_callbacks
         msg = "代理服务运行中, 确定要关闭吗？"
         if not self._proxy_started:
-            self.destroy()
+            self.close_gui()
         else:
             if messagebox.askokcancel("警告", msg):
                 for func in onexit_callbacks:
                     func()
-                self.destroy()
+                self.close_gui()
+
+    def close_gui(self):
+        clear_log(self.textarea_log)
+        self.destroy()
 
     def on_select_conf(self, *v):
         try:
@@ -284,7 +320,6 @@ class Application(tk.Tk):
     def _start_proxy(self, confile):
         from ss.cli import parse_cli
         from ss.management import run_local
-        from ss.settings import settings
         try:
             parse_cli(["local", "-c", confile])
             t = Thread(target=run_local, name="proxy", args=(None, ))
@@ -330,7 +365,7 @@ def set_stdout(text_area):
 def main():
     app = Application()
     app.title_text("myss")
-    set_stdout(app.text_area)
+    set_stdout(app.textarea_log)
     hello()
     app.mainloop()
 
