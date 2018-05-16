@@ -13,13 +13,15 @@ from ss.encrypt import CIPHERS_TO_TEST
 
 if getattr(sys, 'frozen', None):
     basedir = sys._MEIPASS
+    DEFAULT_PAC = "config/pac"
 else:
     basedir = os.path.dirname(__file__)
+    DEFAULT_PAC = "../config/pac"
 
-conf_dir = os.path.join(basedir, "conf")
+conf_dir = os.path.join(basedir, "config/json")
 
 PY2 = sys.version_info[0] == 2
-DEFAULT_PAC = "../config/pac"
+
 
 if PY2:
     from urllib import urlopen, urlencode
