@@ -14,7 +14,7 @@ def to_bytes(s):
     return s
 
 if getattr(sys, 'frozen', None):
-    PWD = os.path.dirname(sys.executable)
+    PWD = sys._MEIPASS
 else:
     PWD = os.path.dirname(__file__)
 
