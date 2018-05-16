@@ -13,7 +13,10 @@ def to_bytes(s):
         return s.encode("utf8")
     return s
 
-PWD = os.path.dirname(__file__)
+if getattr(sys, 'frozen', None):
+    PWD = os.path.dirname(sys.executable)
+else:
+    PWD = os.path.dirname(__file__)
 
 class Command(object):
 
