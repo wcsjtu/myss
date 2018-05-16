@@ -117,10 +117,13 @@ class Application(tk.Tk):
         self.logframe.pack()
 
     def add_log_area(self):
+        scrollbar = tk.Scrollbar(self.logframe)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         ta = tk.Text(self.logframe, width=80, font=("Times New Roman", 11))
+        ta["yscrollcommand"] = scrollbar.set
         ta.pack()
         self.text_area = ta
-
+        
     def all_encrypt_method(self):
         return [
             "aes-256-cfb", "aes-128-cfb"
