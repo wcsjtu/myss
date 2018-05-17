@@ -549,7 +549,7 @@ def http2shadosocks(data):
     if not atyp:
         atyp = struct.pack("!B", 0x03)
         addr = struct.pack("!B", len(host)) + \
-            utils.to_str(host)
+            utils.to_bytes(host)
     elif atyp == socket.AF_INET:
         addr = utils.inet_pton(atyp, host)
         atyp = struct.pack("!B", 0x01)
