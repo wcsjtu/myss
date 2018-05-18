@@ -91,7 +91,7 @@ and for `remote` service are:
 
 ## TODO
 
-- daemon mode
+- Python3.x support
 - flow control
 - ipv6 support
 - more
