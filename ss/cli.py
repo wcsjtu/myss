@@ -6,7 +6,7 @@ import sys
 import os
 import json
 
-from ss import settings
+from ss.settings import settings
 
 def to_bytes(s):
     if type(s) != bytes:
@@ -18,6 +18,10 @@ if getattr(sys, 'frozen', None):
 else:
     PWD = os.path.dirname(__file__)
 
+DEFAULT_LOGFILE = os.path.abspath(
+    os.path.expanduser("~/.myss/monitor.log")
+)
+
 class Command(object):
 
     DESC = "A fast tunnel proxy that helps you bypass firewalls."
@@ -25,7 +29,6 @@ class Command(object):
 
     DEST_K = {
               "subcmd": "subcmd", 
-              "action": "-d", 
               "pid_file": "--pid-file",
               "log_file": "--log-file", 
               "config": "-c", 
@@ -48,6 +51,7 @@ class Command(object):
               "quiet": "--quiet", 
               "verbose": "-v",
               "eth": "--eth",
+              "fork": "--fork",
             }
 
     def __init__(self, parser=None):
@@ -71,14 +75,12 @@ class Command(object):
         parser = parser.add_argument_group("General options")
         self.add_arg(parser, dest="verbose", action='store_true', help="verbose mode")
 
-        self.add_arg(parser, help="command for daemon mode", dest="action",
-                     choices=["start", "stop", "restart"])
-
         self.add_arg(parser, help="pid file for daemon mode", 
                      type=self._check_path, dest="pid_file")
 
-        self.add_arg(parser, help="log file for daemon mode", 
-                     type=self._check_path, dest="log_file")
+        self.add_arg(
+            parser, type=self._check_path, dest="log_file",
+            help="log file for daemon mode, default is %s" % DEFAULT_LOGFILE)
 
         self.add_arg(parser, dest="quiet", help="quiet mode, only show warnings and errors",
                      action='store_true')
@@ -111,6 +113,11 @@ class Command(object):
                      " count of cpu cores is recommended.",
                      default=self._default_workers())
 
+        self.add_arg(parser, dest="fork", 
+            action="store_true", 
+            help="daemon mode, only work on unix system"
+            )
+
         self.add_arg(parser, metavar="ADDR", dest="server", type=self._check_addr,
                      default=to_bytes("0.0.0.0"), required=True, 
                      help=" hostname or ipaddr, default is 0.0.0.0")
@@ -125,8 +132,8 @@ class Command(object):
 
         self.add_arg(parser, dest="manager_address",
                      help="optional server manager UDP address, see wiki")
-        self.add_arg(parser, dest="dns_cache", default="~/.sscache/dns.cache",
-                    help="path to dns cache file. default is `~/.sscache/dns.cache`")
+        self.add_arg(parser, dest="dns_cache", default="~/.myss/dns.cache",
+                    help="path to dns cache file. default is `~/.myss/dns.cache`")
         
         self.add_general_argument(self.server_parser)
 
@@ -197,7 +204,7 @@ class Command(object):
                 logging.warn("fork mode is only support on `posix`, "
                              "other platform worker count is limit 1")
                 c = 1
-            return 1
+            return c
         except ValueError:
             raise argparse.ArgumentTypeError("invalid int value: '%s'" % c)
 
@@ -270,7 +277,7 @@ class Command(object):
                 cfg = arg.strip("-c")
                 break
         if cfg:
-            settings.settings.update({"config_file": cfg})
+            settings.update({"config_file": cfg})
         return cfg
 
     def gen_argv(self, subcmd, cfg):
@@ -295,6 +302,11 @@ class Command(object):
             args = self.gen_argv(subc, config)
         return d(self.parser.parse_args(args))
 
+def check_fork(v):
+    if not hasattr(os, "fork") and v:
+        logging.warn("optional parameter --fork only work on unix system")
+        v = False
+    return v
 
 def parse_cli(args=None):
     
@@ -303,8 +315,14 @@ def parse_cli(args=None):
     if "rhost" in cfg:
         cfg["server"], cfg["server_port"] =  cfg["rhost"]
         del cfg["rhost"]
-    settings.settings.update(cfg)
+
+    settings.update(cfg)
+    settings["fork"] = check_fork(settings.get("fork", False))
+
+    if settings["fork"] and not settings["log_file"]:
+        settings["log_file"] = DEFAULT_LOGFILE
     config_logging(cfg)
+
     return cfg
 
 def config_logging(cfg):

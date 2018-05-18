@@ -3,6 +3,7 @@ import logging
 import sys
 import os
 import signal
+from functools import partial
 from ss import utils, cli, wrapper
 from ss.config import set_proxy_mode
 from ss.settings import settings
@@ -53,6 +54,17 @@ def run_local(io_loop):
         logging.error(e, exc_info=True)
         sys.exit(1)
 
+def on_master_exit(s, frame, children):
+    """only for non-daemon mode"""
+    for pid in children:
+        try:
+            os.kill(pid, s)
+            print("kill subprocess %d" % pid)
+            os.waitpid(pid, 0)
+        except OSError:  # child may already exited
+            pass
+    sys.exit(0)
+
 def run_server(io_loop):
     sa = settings['server'], settings['server_port']
     logging.info("starting server at %s:%d" % sa)
@@ -60,9 +72,9 @@ def run_server(io_loop):
     dns_resolver = DNSResolver(io_loop)
     tcp_server = tcphandler.ListenHandler(io_loop, sa, 
         tcphandler.RemoteConnHandler, dns_resolver)
-    upd_server = udphandler.ListenHandler(io_loop, sa, 
+    udp_server = udphandler.ListenHandler(io_loop, sa, 
         udphandler.ConnHandler, 0, dns_resolver)
-    servers = [tcp_server, upd_server, dns_resolver]
+    servers = [tcp_server, udp_server, dns_resolver]
 
 
     def start():
@@ -70,46 +82,49 @@ def run_server(io_loop):
             for server in servers:
                 server.register()
                 wrapper.onexit(server.destroy)
-            wrapper.register(['SIGQUIT', 'SIGINT', 'SIGTERM'], 
-                wrapper.exec_exitfuncs)
             io_loop = IOLoop.current()
             io_loop.run()
         except Exception as e:
             logging.error(e, exc_info=True)
             sys.exit(1)
 
+    
+    print(settings)
     workers = settings.get("workers", 1)
-    if workers > 1:
-        children = []
-        def on_master_exit(s, _):
-            for pid in children:
-                try:
-                    os.kill(pid, s)
-                    os.waitpid(pid, 0)
-                except OSError:  # child may already exited
-                    pass
-            sys.exit(0)
+    is_daemon = settings["fork"]
 
-        is_child = False
-        for i in range(workers):
+    children = []
+    if not is_daemon:
+        for _ in range(workers-1):
             rpid = os.fork()
-            if rpid == 0:
-                logging.info('worker started')
-                is_child = True
-                start()
-                break
-            else:
+            if rpid:
+                print("sub process %d forked" % rpid)
                 children.append(rpid)
-        if not is_child:
-            wrapper.register(['SIGQUIT', 'SIGINT', 'SIGTERM'], 
-                on_master_exit)
-
-            for server in servers:
-                server._sock.close()
-            #for child in children:
-            #    os.waitpid(child, 0)
+            else:
+                logging.info("proxy start in sub process %d " % os.getpid())
+                return start()
+        if children:
+            wrapper.register(
+                ['SIGQUIT', 'SIGINT', 'SIGTERM'],
+                partial(on_master_exit, children=children)
+            )
+        logging.info("proxy start in master process %d" % os.getpid())
+        return start()
     else:
-        logging.info('worker started')
-        start()
-
+        for _ in range(workers):
+            rpid = os.fork()
+            if rpid:
+                print("sub process %d forked" % rpid)
+                children.append(rpid)
+            else:
+                logging.info("proxy start in sub process %d " % os.getpid())
+                return start()
+        if settings["pid_file"]:
+            with open(settings["pid_file"], "w") as f:
+                sc = [str(pid) for pid in children]
+                f.write(" ".join(sc))
+        print("all pids are written in pid file %s" % settings["pid_file"])
+        print("%d workers spwaned, now master process exit" % workers)
+        sys.exit(0)
+    
 
