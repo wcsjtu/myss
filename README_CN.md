@@ -98,7 +98,7 @@ python manage.py server --help
 
 ## TODO
 
-- 守护进程、多进程功能
+- Python3.x 支持
 - 服务端流量控制
 - 完整的IPV6支持
 - 更多的协议转换功能
